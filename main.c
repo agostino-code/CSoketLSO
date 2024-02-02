@@ -19,6 +19,7 @@ typedef struct {
     int socket;
     struct sockaddr_in address;
     char username[256];
+    int avatar;
 } Client;
 
 enum avatars {
@@ -110,9 +111,7 @@ enum player_status {
 
 enum room_status {
     WAITING,
-    INGAME,
-    GUESSED,
-    CLOSE
+    INGAME
 };
 
 //enum for max Player 10,15,20
@@ -217,6 +216,71 @@ const char* userToJson(const User* userObj) {
     yyjson_mut_doc_free(doc);
     return json;
 }
+//Send all room information to client
+const char* roomToJson(const Room* roomObj) {
+    yyjson_mut_doc* doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val* root = yyjson_mut_obj(doc);
+    yyjson_mut_val* room = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, root);
+
+    yyjson_mut_obj_add_str(doc, root, "responseType", "SUCCESS");
+    yyjson_mut_obj_add(root, yyjson_mut_strn(doc, "data", 4), room);
+    yyjson_mut_obj_add_str(doc, room, "name", roomObj->name);
+    yyjson_mut_obj_add_int(doc, room, "numberOfPlayers", roomObj->numberOfPlayers);
+    yyjson_mut_obj_add_int(doc, room, "maxNumberOfPlayers", roomObj->maxPlayers);
+    yyjson_mut_obj_add_int(doc, room, "port", roomObj->address.sin_port);
+    //Round
+    yyjson_mut_obj_add_int(doc, room, "round", roomObj->round);
+    //Players
+    yyjson_mut_val* players = yyjson_mut_arr(doc);
+    yyjson_mut_obj_add(room, yyjson_mut_strn(doc, "players", 7), players);
+    for (int i = 0; i < roomObj->numberOfPlayers; i++) {
+        yyjson_mut_val* player = yyjson_mut_obj(doc);
+        yyjson_mut_arr_append(players, player);
+        yyjson_mut_obj_add_str(doc, player, "username", roomObj->players[i].client.username);
+        //avatar
+        yyjson_mut_obj_add_int(doc, player, "avatar", roomObj->players[i].client.avatar);
+        yyjson_mut_obj_add_int(doc, player, "score", roomObj->players[i].score);
+        if(roomObj->numberOfPlayers>1) {
+            switch (roomObj->players[i].status) {
+                case SPECTATOR:
+                    yyjson_mut_obj_add_str(doc, player, "status", "spectator");
+                break;
+                case GUESSER:
+                    yyjson_mut_obj_add_str(doc, player, "status", "guesser");
+                break;
+                case CHOOSER:
+                    yyjson_mut_obj_add_str(doc, player, "status", "chooser");
+                break;
+            }
+        }
+    }
+    switch (roomObj->language) {
+        case ENGLISH:
+            yyjson_mut_obj_add_str(doc, room, "language", "en");
+            break;
+        case ITALIAN:
+            yyjson_mut_obj_add_str(doc, room, "language", "it");
+            break;
+        case SPANISH:
+            yyjson_mut_obj_add_str(doc, room, "language", "es");
+            break;
+        case GERMAN:
+            yyjson_mut_obj_add_str(doc, room, "language", "de");
+            break;
+    }
+
+    const char* json = yyjson_mut_write(doc, 0, NULL);
+    //    if (json) {
+    //        printf("json: %s\n", json);
+    //        free((void *)json);
+    //    }
+
+    printf("Response sent: %s\n", json);
+
+    yyjson_mut_doc_free(doc);
+    return json;
+}
 
 // Function for creating a JSON error message
 const char* createJsonErrorMessage(const char* errorMessage) {
@@ -242,12 +306,10 @@ const char* createJsonErrorMessage(const char* errorMessage) {
 const char* createJsonSuccessMessage(const char* successMessage) {
     yyjson_mut_doc* doc = yyjson_mut_doc_new(NULL);
     yyjson_mut_val* root = yyjson_mut_obj(doc);
-    yyjson_mut_val* data = yyjson_mut_obj(doc);
     yyjson_mut_doc_set_root(doc, root);
 
     yyjson_mut_obj_add_str(doc, root, "responseType", "SUCCESS");
-    yyjson_mut_obj_add(root, yyjson_mut_strn(doc, "data", 4), data);
-    yyjson_mut_obj_add_str(doc, data, "message", successMessage);
+    yyjson_mut_obj_add_str(doc, root, "data", successMessage);
 
     const char* json = yyjson_mut_write(doc, 0, NULL);
     //    if (json) {
@@ -272,26 +334,11 @@ const char* createJsonListOfRooms() {
     yyjson_mut_obj_add(root, yyjson_mut_strn(doc, "data", 4), data);
 
     for (int i = 0; i < num_rooms; i++) {
-        if (rooms[i].status == WAITING) {
             yyjson_mut_val* room = yyjson_mut_obj(doc);
             yyjson_mut_obj_add_str(doc, room, "name", rooms[i].name);
             yyjson_mut_obj_add_int(doc, room, "numberOfPlayers", rooms[i].numberOfPlayers);
-            yyjson_mut_obj_add_int(doc, room, "maxPlayers", rooms[i].maxPlayers);
-            //Status
-            switch (rooms[i].status) {
-                case WAITING:
-                    yyjson_mut_obj_add_str(doc, room, "status", "WAITING");
-                    break;
-                case INGAME:
-                    yyjson_mut_obj_add_str(doc, room, "status", "INGAME");
-                    break;
-                case GUESSED:
-                    yyjson_mut_obj_add_str(doc, room, "status", "GUESSED");
-                    break;
-                case CLOSE:
-                    yyjson_mut_obj_add_str(doc, room, "status", "CLOSE");
-                    break;
-            }
+            yyjson_mut_obj_add_int(doc, room, "maxNumberOfPlayers", rooms[i].maxPlayers);
+            yyjson_mut_obj_add_int(doc, room, "port", rooms[i].address.sin_port);
             switch (rooms[i].language) {
                 case ENGLISH:
                     yyjson_mut_obj_add_str(doc, room, "language", "en");
@@ -307,7 +354,6 @@ const char* createJsonListOfRooms() {
                     break;
             }
             yyjson_mut_arr_append(data, room);
-        }
     }
 
     const char* json = yyjson_mut_write(doc, 0, NULL);
@@ -399,12 +445,10 @@ void* handle_room(void* arg) {
     room->thread = pthread_self();
     pthread_mutex_unlock(&rooms_mutex);
 
-    while (room->status != CLOSE) {
         int client_socket = accept(room_socket, (struct sockaddr *) &client_address,
                                    (socklen_t *) &client_address_length);
         if (client_socket < 0) {
             printf("Could not accept client connection on room %s\n", room->name);
-            continue;
         }
 
         // Add the client to the players array
@@ -439,7 +483,6 @@ void* handle_room(void* arg) {
         pthread_t thread;
         if (pthread_create(&thread, NULL, handle_player, &client_socket) != 0) {
             printf("Could not create thread for client in room %s\n", room->name);
-            continue;
         }
 
         //        pthread_mutex_lock(&rooms_mutex);
@@ -451,7 +494,6 @@ void* handle_room(void* arg) {
         //        }
         //        room->numberOfPlayers--;
         pthread_mutex_unlock(&rooms_mutex);
-    }
 
     // Close the room socket
     close(room_socket);
@@ -460,6 +502,7 @@ void* handle_room(void* arg) {
     pthread_mutex_unlock(&rooms_mutex);
     // Clean up the thread resources
     pthread_detach(pthread_self());
+    return 0;
 }
 
 // Function to handle a connected client
@@ -525,6 +568,7 @@ void* handle_client(void* arg) {
 
                 Client* client = find_client_by_socket(client_socket);
                 strcpy(client->username, user.username);
+                client->avatar = user.avatar;
 
                 PQclear(result);
                 //Create the JSON message
@@ -599,7 +643,7 @@ void* handle_client(void* arg) {
             }
 
             //Request type list of rooms
-            if (strcmp(requestType, "LIST_ROOM") == 0) {
+            if (strcmp(requestType, "LIST_ROOMS") == 0) {
                 //create JSON message
                 const char* jsonMessage = createJsonListOfRooms();
                 send(client_socket, jsonMessage, strlen(jsonMessage), 0);
@@ -620,6 +664,35 @@ void* handle_client(void* arg) {
                     send(client_socket, errorMessage, strlen(errorMessage), 0);
                     continue;
                 }
+
+                //Get port from request
+                yyjson_val* data_value = yyjson_obj_get(root, "data");
+                yyjson_val* port_value = yyjson_obj_get(data_value, "port");
+                const int port = yyjson_get_int(port_value);
+                //Find the room with the port
+                const Room* room = NULL;
+                for (int i = 0; i < num_rooms; i++) {
+                    if (rooms[i].address.sin_port == port) {
+                        room = &rooms[i];
+                        break;
+                    }
+                }
+                //Send error message if room not found
+                if (room == NULL) {
+                    const char* errorMessage = createJsonErrorMessage("Room not found");
+                    send(client_socket, errorMessage, strlen(errorMessage), 0);
+                    continue;
+                }
+                //Send error message if room is full
+                if (room->numberOfPlayers == room->maxPlayers) {
+                    const char* errorMessage = createJsonErrorMessage("Room is full");
+                    send(client_socket, errorMessage, strlen(errorMessage), 0);
+                    continue;
+                }
+                //Get all r
+
+
+
             }
 
 
@@ -635,7 +708,6 @@ void* handle_client(void* arg) {
                 if (strcmp(client->username, "Anonymous") == 0) {
                     const char* errorMessage = createJsonErrorMessage("You must be logged in to create a room");
                     send(client_socket, errorMessage, strlen(errorMessage), 0);
-                    continue;
                 }
 
                 //extract_room(request, &rooms[num_rooms]);
@@ -666,14 +738,15 @@ void* handle_client(void* arg) {
                 if (pthread_create(&tid, NULL, &handle_room, &rooms[num_rooms]) != 0) {
                     const char* errorMessage = createJsonErrorMessage("Something went wrong");
                     send(client_socket, errorMessage, strlen(errorMessage), 0);
+                }else {
+                    num_rooms++;
+                    //Send success message
+                    char* port = malloc(6);
+                    sprintf(port, "%d", 3000 + num_rooms);
+                    const char* successMessage = createJsonSuccessMessage(port);
+                    send(client_socket, successMessage, strlen(successMessage), 0);
                 }
-
-                num_rooms++;
-
                 pthread_mutex_unlock(&clients_mutex);
-
-                const char* successMessage = createJsonSuccessMessage("Room created successfully");
-                send(client_socket, successMessage, strlen(successMessage), 0);
             }
         } else {
             printf("Failed to parse JSON string.\n");
@@ -701,6 +774,7 @@ void* handle_client(void* arg) {
 
     // Clean up the thread resources
     pthread_detach(pthread_self());
+    return 0;
 }
 
 int main() {
