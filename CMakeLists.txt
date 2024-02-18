@@ -3,7 +3,15 @@ project(LSOProject C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(LSOProject main.c)
+set(c_files
+        globals.c
+        handle_client.c
+        handle_player.c
+        handle_room.c
+        ./data/room.c
+        ./data/player.c
+        )
+add_executable(LSOProject main.c ${c_files})
 
 add_subdirectory(yyjson-0.8.0)
 target_link_libraries(LSOProject PRIVATE yyjson)
