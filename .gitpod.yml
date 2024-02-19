@@ -5,6 +5,13 @@
 # Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
 
 tasks:
-  - init: cmake .
+# New terminal sudo tailscaled
+  - name: tailscaled
+    before: sudo tailscaled
+    openMode: split-right
 
+  - name: tailscale up
+    command: sudo tailscale up --authkey tskey-auth-k8278d5CNTRL-5q1atvGq8Sg29sSJBm6wSgKaTtrK6hPK
 
+  - name: docker-compose up
+    command: docker-compose up

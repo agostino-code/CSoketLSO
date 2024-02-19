@@ -4,20 +4,21 @@
 #include <libpq-fe.h>
 #include "data/client.h"
 #include "data/room.h"
+#include "config.h"
 
 // Add your global variable declarations here
-static Room rooms[MAX_ROOMS];
-static int num_rooms = 0;
+extern Room rooms[];
+extern int num_rooms;
 // Array to store connected clients
-static Client clients[MAX_CLIENTS];
-static int num_clients=0;
+extern Client clients[];
+extern int num_clients;
 
-static PGconn* conn;
+extern PGconn* conn;
 // Add your code here
 // Mutex for synchronizing access to the clients array
-static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t clients_mutex;
 //Mutex for synchronizing access to the rooms array
-static pthread_mutex_t rooms_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t rooms_mutex;
 
 Client* find_client_by_socket(int socket);
 

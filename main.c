@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "config.h"
 #include "globals.h"
 #include "handle_client.h"
@@ -87,12 +88,16 @@ int main() {
         }
         pthread_mutex_unlock(&clients_mutex);
 
-        // Create a new thread to handle the client
+        // Create a new thread to handle the new client
         pthread_t tid;
-        if (pthread_create(&tid, NULL, handle_client, &client_socket) != 0) {
+        if (pthread_create(&tid, NULL, &handle_client, &client_socket) != 0) {
             perror("Failed to create thread");
-            break;
+            continue;
         }
+
+        // Detach the thread
+        pthread_detach(tid);
+
     }
 
     // Close the server socket

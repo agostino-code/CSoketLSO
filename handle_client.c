@@ -8,28 +8,54 @@
 
 void *handle_client(void *arg)
 {
-    const int client_socket = *((int *)arg);
-    char* bytes;
-    ssize_t num_bytes;
+    int client_socket = *(int *)arg;
+    char buffer[256];
+    int n;
 
-    // Receive and process client requests
-    while ((num_bytes = recv(client_socket, bytes, sizeof(bytes) - 1, 0)) > 0)
+    while (1)
     {
-        bytes[num_bytes] = '\0';
-        printf("Received request: %s\n", bytes);
+        bzero(buffer, 256);
+        n = read(client_socket, buffer, 255);
 
-        // Parse the JSON string
-        Request *request = parseRequest(bytes);
-
-        if (request == NULL)
+        if (n < 0)
         {
-            printf("Not valid request\n");
-            const char *successMessage = createJsonErrorMessage("Not valid request");
-            send(client_socket, successMessage, strlen(successMessage), 0);
+            perror("Errore nella lettura dal socket");
+            break;
+        }
+        else if (n == 0)
+        {
+            printf("Il client si è disconnesso.\n");
+            // Client disconnected, remove it from the clients array
+            pthread_mutex_lock(&clients_mutex);
+            for (int i = 0; i < num_clients; i++)
+            {
+                if (clients[i].socket == client_socket)
+                {
+                    printf("Client disconnected: %s:%hu\n", inet_ntoa(clients[i].address.sin_addr),
+                           ntohs(clients[i].address.sin_port));
+                    memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(Client));
+                    break;
+                }
+            }
+            num_clients--;
+            printf("Number of clients: %d\n", num_clients);
+            pthread_mutex_unlock(&clients_mutex);
+            break;
+        }
+
+        printf("Messaggio ricevuto: %s\n", buffer);
+        // Il tuo codice per gestire il messaggio...
+
+        Request *request = parseRequest(buffer);
+
+        if (request->type == NULL)
+        {
+            const char *errorMessage = createJsonErrorMessage("Invalid JSON");
+            send(client_socket, errorMessage, strlen(errorMessage), 0);
             continue;
         }
 
-        char *requestType = request->type;
+        const char *requestType = request->type;
 
         if (strcmp(requestType, "SIGN_IN") == 0)
         {
@@ -208,28 +234,8 @@ void *handle_client(void *arg)
             }
             pthread_mutex_unlock(&clients_mutex);
         }
-        // Client disconnected, remove it from the clients array
-        pthread_mutex_lock(&clients_mutex);
-        for (int i = 0; i < num_clients; i++)
-        {
-            if (clients[i].socket == client_socket)
-            {
-                printf("Client disconnected: %s:%hu\n", inet_ntoa(clients[i].address.sin_addr),
-                       ntohs(clients[i].address.sin_port));
-                memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(Client));
-                break;
-            }
-        }
-        num_clients--;
-        printf("Number of clients: %d\n", num_clients);
-        pthread_mutex_unlock(&clients_mutex);
-
-        // Close the client socket
-        close(client_socket);
-
-        // Clean up the thread resources
-        pthread_detach(pthread_self());
-        return 0;
     }
-    return 0;
+
+    close(client_socket);
+    return NULL;
 }

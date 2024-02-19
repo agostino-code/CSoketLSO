@@ -150,7 +150,7 @@ Room *roomParse(const char *string)
     for (int i = 0; i < room->numberOfPlayers; i++)
     {
         yyjson_val *player = yyjson_arr_get(players, i);
-        room->players[i].client.username = (char *)yyjson_get_str(yyjson_obj_get(player, "username"));
+        strcpy(room->players[i].client.username, yyjson_get_str(yyjson_obj_get(player, "username")));
         room->players[i].client.avatar = yyjson_get_int(yyjson_obj_get(player, "avatar"));
         room->players[i].score = yyjson_get_int(yyjson_obj_get(player, "score"));
         if (room->numberOfPlayers > 1)
@@ -266,8 +266,9 @@ Request *parseRequest(const char *string)
         return NULL;
     }
     Request *request = (Request *)malloc(sizeof(Request));
-    request->type = (char *)yyjson_get_str(yyjson_obj_get(root, "requestType"));
-    request->data = (char *)yyjson_get_str(yyjson_obj_get(root, "data"));
+    request->type = yyjson_get_str(yyjson_obj_get(root, "requestType"));
+    //{"requestType":"SIGN_IN","data":{"email":"agostino.cesarano@gmail.com","password":"aaaaaa","username":null,"avatar":null}}
+    request->data = yyjson_get_str(yyjson_obj_get(root, "data"));
     yyjson_doc_free(doc);
     return request;
 }

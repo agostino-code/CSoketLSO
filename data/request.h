@@ -5,8 +5,8 @@
 
 //Request struct
 typedef struct {
-    char* type;
-    char* data;
+    const char* type;
+    const char* data;
 } Request;
 
 #endif // REQUEST_H
