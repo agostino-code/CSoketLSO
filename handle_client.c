@@ -9,13 +9,13 @@
 void *handle_client(void *arg)
 {
     int client_socket = *(int *)arg;
-    char buffer[256];
+    char buffer[1024];
     int n;
 
     while (1)
     {
-        bzero(buffer, 256);
-        n = read(client_socket, buffer, 255);
+        bzero(buffer, 1024);
+        n = read(client_socket, buffer, 1023);
 
         if (n < 0)
         {
@@ -64,25 +64,34 @@ void *handle_client(void *arg)
             char query[256];
             sprintf(query, "SELECT * FROM users WHERE email = '%s' AND password = '%s'", user->email, user->password);
             PGresult *result = PQexec(conn, query);
+
+            if (result == NULL)
+            {
+                const char *errorMessage = createJsonErrorMessage("Error executing query");
+                send(client_socket, errorMessage, strlen(errorMessage), 0);
+                continue;
+            }
+
             const int rows = PQntuples(result);
             if (rows == 0)
             {
                 const char *errorMessage = createJsonErrorMessage("Email or password incorrect");
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
-                // send(client_socket, "errorMessage", strlen("errorMessage"), 0);
+                PQclear(result);
                 continue;
             }
-
-            strcpy(user->email, PQgetvalue(result, 0, 0));
-            strcpy(user->username, PQgetvalue(result, 0, 1));
-            strcpy(user->password, PQgetvalue(result, 0, 2));
+            user->email = strdup(PQgetvalue(result, 0, 0));
+            //user->password ********
+            strcpy(user->password, "********");
+            user->username = strdup(PQgetvalue(result, 0, 1));
             user->avatar = strtoul(PQgetvalue(result, 0, 3), NULL, 10);
+
+            PQclear(result);
 
             Client *client = find_client_by_socket(client_socket);
             strcpy(client->username, user->username);
             client->avatar = user->avatar;
 
-            PQclear(result);
             // Create the JSON message
             const char *jsonMessage = userToJson(user);
             send(client_socket, jsonMessage, strlen(jsonMessage), 0);
@@ -103,6 +112,7 @@ void *handle_client(void *arg)
             {
                 const char *errorMessage = createJsonErrorMessage("Email already exists");
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
+                PQclear(result);
                 continue;
             }
 
@@ -113,6 +123,7 @@ void *handle_client(void *arg)
             {
                 const char *errorMessage = createJsonErrorMessage("Username already exists");
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
+                PQclear(result);
                 continue;
             }
 
@@ -123,8 +134,14 @@ void *handle_client(void *arg)
             {
                 const char *errorMessage = createJsonErrorMessage("Error inserting user into database");
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
+                PQclear(result);
                 continue;
             }
+            PQclear(result);
+
+            Client *client = find_client_by_socket(client_socket);
+            strcpy(client->username, user->username);
+            client->avatar = user->avatar;
 
             // success message
             const char *successMessage = createJsonSuccessMessage("User created successfully");

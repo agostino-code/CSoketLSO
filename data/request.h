@@ -4,9 +4,11 @@
 // Add your code here
 
 //Request struct
+
+#include <yyjson.h>
 typedef struct {
     const char* type;
-    const char* data;
+    yyjson_val* data;
 } Request;
 
 #endif // REQUEST_H
