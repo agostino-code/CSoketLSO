@@ -3,28 +3,23 @@
 
 const char *userToJson(const User *userObj)
 {
+    //{"responseType":"SUCCESS","data":{"email":"agostino.cesarano@gmail.com","password":"aaaaaa","username":null,"avatar":null}}
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
     yyjson_mut_val *root = yyjson_mut_obj(doc);
-    yyjson_mut_val *user = yyjson_mut_obj(doc);
+    yyjson_mut_val *data = yyjson_mut_obj(doc);
     yyjson_mut_doc_set_root(doc, root);
-
     yyjson_mut_obj_add_str(doc, root, "responseType", "SUCCESS");
-    yyjson_mut_obj_add(root, yyjson_mut_strn(doc, "data", 4), user);
-    yyjson_mut_obj_add_str(doc, user, "email", userObj->email);
-    yyjson_mut_obj_add_str(doc, user, "username", userObj->username);
-    yyjson_mut_obj_add_str(doc, user, "password", userObj->password);
-    yyjson_mut_obj_add_int(doc, user, "avatar", userObj->avatar);
+    yyjson_mut_obj_add(root, yyjson_mut_strn(doc, "data", 4), data);
+    yyjson_mut_obj_add_str(doc, data, "email", userObj->email);
+    yyjson_mut_obj_add_str(doc, data, "password", userObj->password);
+    yyjson_mut_obj_add_str(doc, data, "username", userObj->username);
+    yyjson_mut_obj_add_int(doc, data, "avatar", userObj->avatar);
 
     const char *json = yyjson_mut_write(doc, 0, NULL);
-    //    if (json) {
-    //        printf("json: %s\n", json);
-    //        free((void *)json);
-    //    }
-
-    printf("Response sent: %s\n", json);
 
     yyjson_mut_doc_free(doc);
     return json;
+    
 }
 
 // userParse
@@ -36,6 +31,7 @@ User *userParse(yyjson_val* root)
     user->password = (char *)yyjson_get_str(yyjson_obj_get(root, "password"));
     user->avatar = yyjson_get_int(yyjson_obj_get(root, "avatar"));
     return user;
+    
 }
 
 // Send all room information to client

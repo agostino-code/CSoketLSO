@@ -6,7 +6,7 @@
 typedef struct {
     int socket;
     struct sockaddr_in address;
-    char username[50];
+    char* username;
     int avatar;
 } Client;
 

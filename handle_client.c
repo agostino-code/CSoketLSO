@@ -89,12 +89,17 @@ void *handle_client(void *arg)
             PQclear(result);
 
             Client *client = find_client_by_socket(client_socket);
-            strcpy(client->username, user->username);
+            client->username = user->username;
             client->avatar = user->avatar;
 
-            // Create the JSON message
             const char *jsonMessage = userToJson(user);
             send(client_socket, jsonMessage, strlen(jsonMessage), 0);
+
+            free(user);
+            free(request);
+            free(jsonMessage);
+            free(requestType);
+            
             continue;
         }
 
