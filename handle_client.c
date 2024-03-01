@@ -97,8 +97,6 @@ void *handle_client(void *arg)
 
             free(user);
             free(request);
-            free(jsonMessage);
-            free(requestType);
             
             continue;
         }
@@ -111,7 +109,7 @@ void *handle_client(void *arg)
             // Check if the user exists
             char query[256];
             sprintf(query, "SELECT * FROM users WHERE email = '%s'", user->email);
-            const PGresult *result = PQexec(conn, query);
+            PGresult *result = PQexec(conn, query);
             int rows = PQntuples(result);
             if (rows != 0)
             {
@@ -182,8 +180,7 @@ void *handle_client(void *arg)
             }
 
             // Get the port from the request
-            int port = atoi(request->data);
-
+            int port = json_object_get_int(request->data);
             // Find the room with the port
             const Room *room = NULL;
             for (int i = 0; i < num_rooms; i++)

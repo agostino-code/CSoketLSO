@@ -10,6 +10,7 @@ enum player_status {
 };
 
 enum player_status getPlayerStatusFromString(const char* statusString);
+const char* getPlayerStatusString(enum player_status status);
 
 typedef struct {
     int score;

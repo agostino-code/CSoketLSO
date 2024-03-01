@@ -5,10 +5,10 @@
 
 //Request struct
 
-#include <yyjson.h>
+#include <json.h>
 typedef struct {
     const char* type;
-    yyjson_val* data;
+    json_object* data;
 } Request;
 
 #endif // REQUEST_H

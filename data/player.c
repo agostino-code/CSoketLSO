@@ -13,3 +13,17 @@ enum player_status getPlayerStatusFromString(const char* statusString) {
         return SPECTATOR; // You can choose a different default if needed
     }
 }
+
+const char* getPlayerStatusString(enum player_status status) {
+    switch (status) {
+        case SPECTATOR:
+            return "spectator";
+        case GUESSER:
+            return "guesser";
+        case CHOOSER:
+            return "chooser";
+        default:
+            // Handle unknown status or return a default value
+            return "spectator"; // You can choose a different default if needed
+    }
+}
