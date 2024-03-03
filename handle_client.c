@@ -89,12 +89,15 @@ void *handle_client(void *arg)
             PQclear(result);
 
             Client *client = find_client_by_socket(client_socket);
-            strcpy(client->username, user->username);
+            client->username = user->username;
             client->avatar = user->avatar;
 
-            // Create the JSON message
             const char *jsonMessage = userToJson(user);
             send(client_socket, jsonMessage, strlen(jsonMessage), 0);
+
+            free(user);
+            free(request);
+            
             continue;
         }
 
@@ -106,7 +109,7 @@ void *handle_client(void *arg)
             // Check if the user exists
             char query[256];
             sprintf(query, "SELECT * FROM users WHERE email = '%s'", user->email);
-            const PGresult *result = PQexec(conn, query);
+            PGresult *result = PQexec(conn, query);
             int rows = PQntuples(result);
             if (rows != 0)
             {
@@ -177,8 +180,7 @@ void *handle_client(void *arg)
             }
 
             // Get the port from the request
-            int port = atoi(request->data);
-
+            int port = json_object_get_int(request->data);
             // Find the room with the port
             const Room *room = NULL;
             for (int i = 0; i < num_rooms; i++)

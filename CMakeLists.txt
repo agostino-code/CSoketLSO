@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.16)
 project(LSOProject C)
 
 set(CMAKE_C_STANDARD 11)
@@ -14,8 +14,11 @@ set(c_files
         )
 add_executable(LSOProject main.c ${c_files})
 
-add_subdirectory(yyjson-0.8.0)
-target_link_libraries(LSOProject PRIVATE yyjson)
-set(YYJSON_DISABLE_NON_STANDARD ON CACHE INTERNAL "")
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBBSD REQUIRED libbsd)
+include_directories(${LIBBSD_INCLUDE_DIRS})
+
+add_subdirectory(json-c)
+target_link_libraries(LSOProject PRIVATE json-c ${LIBBSD_LIBRARIES})
 add_subdirectory(libpq-standalone)
 target_link_libraries(LSOProject PRIVATE PostgreSQL::PostgreSQL)

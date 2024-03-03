@@ -81,7 +81,8 @@ int main() {
         if (num_clients < MAX_CLIENTS) {
             clients[num_clients].socket = client_socket;
             clients[num_clients].address = client_addr;
-            strcpy(clients[num_clients].username, "Anonymous");
+            // strcpy(clients[num_clients].username, "Anonymous");
+            clients[num_clients].username = "Anonymous";
             printf("Client connected: %s:%hu\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
             num_clients++;
             printf("Number of clients: %d\n", num_clients);

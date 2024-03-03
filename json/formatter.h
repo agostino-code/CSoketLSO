@@ -1,7 +1,7 @@
 #ifndef FORMATTER_H
 #define FORMATTER_H
 
-#include <yyjson.h>
+#include <json.h>
 #include "../data/user.h"
 #include "../data/room.h"
 #include "../data/player.h"
@@ -10,11 +10,11 @@
 const char *userToJson(const User *userObj);
 
 // userParse
-User *userParse(yyjson_val *root);
+User *userParse(json_object *root);
 // Send all room information to client
 const char *roomToJson(const Room *roomObj);
 // roomParse
-Room *roomParse(yyjson_val *root);
+Room *roomParse(json_object *root);
 
 // Function for creating a JSON error message
 const char *createJsonErrorMessage(const char *errorMessage);
