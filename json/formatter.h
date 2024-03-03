@@ -12,7 +12,7 @@ const char *userToJson(const User *userObj);
 // userParse
 User *userParse(json_object *root);
 // Send all room information to client
-const char *roomToJson(const Room *roomObj);
+const char* roomToJson(Room* room);
 // roomParse
 Room *roomParse(json_object *root);
 

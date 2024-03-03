@@ -57,7 +57,7 @@ int main() {
     }
 
     // Listen for incoming connections
-    if (listen(server_socket, 10) < 0) {
+    if (listen(server_socket, 5) < 0) {
         perror("Listening failed");
         return 1;
     }

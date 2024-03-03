@@ -4,13 +4,10 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
+ 
 #include "player.h"
 #include "../config.h"
-
-enum room_status {
-    WAITING,
-    INGAME
-};
 
 enum max_player {
     TEN = 10,
@@ -39,7 +36,7 @@ typedef struct {
     int socket;
     struct sockaddr_in address;
     pthread_t thread;
-    enum room_status status;
+    bool inGame;
 } Room;
 
 #endif // ROOM_H

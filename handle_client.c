@@ -45,6 +45,12 @@ void *handle_client(void *arg)
 
         printf("Messaggio ricevuto: %s\n", buffer);
         // Il tuo codice per gestire il messaggio...
+        //if PING, send PONG
+        if (strcmp(buffer, "PING") == 0)
+        {
+            send(client_socket, "PONG", 4, 0);
+            continue;
+        }
 
         Request *request = parseRequest(buffer);
 
@@ -81,8 +87,7 @@ void *handle_client(void *arg)
                 continue;
             }
             user->email = strdup(PQgetvalue(result, 0, 0));
-            //user->password ********
-            strcpy(user->password, "********");
+            user->password = strdup(PQgetvalue(result, 0, 2));
             user->username = strdup(PQgetvalue(result, 0, 1));
             user->avatar = strtoul(PQgetvalue(result, 0, 3), NULL, 10);
 
@@ -143,7 +148,7 @@ void *handle_client(void *arg)
             PQclear(result);
 
             Client *client = find_client_by_socket(client_socket);
-            strcpy(client->username, user->username);
+            client->username = user->username;
             client->avatar = user->avatar;
 
             // success message
@@ -227,14 +232,14 @@ void *handle_client(void *arg)
 
             // extract_room(request, &rooms[num_rooms]);
             rooms[num_rooms].numberOfPlayers = 0;
-            rooms[num_rooms].status = WAITING;
-
-            // Set the room address
-            rooms[num_rooms].address.sin_family = AF_INET;
-            rooms[num_rooms].address.sin_addr.s_addr = INADDR_ANY;
+            rooms[num_rooms].inGame = false;
             rooms[num_rooms].address.sin_port = htons(3000 + num_rooms);
 
             Room *room = roomParse(request->data);
+            rooms[num_rooms].name = room->name;
+            rooms[num_rooms].maxPlayers = room->maxPlayers;
+            rooms[num_rooms].language = room->language;
+            
             // create thread for the room
             pthread_t tid;
             if (pthread_create(&tid, NULL, &handle_room, &rooms[num_rooms]) != 0)

@@ -1,5 +1,6 @@
 #include "formatter.h"
 #include "../globals.h"
+#include <ctype.h> 
 
 const char *userToJson(const User *userObj)
 {
@@ -23,7 +24,14 @@ const char *userToJson(const User *userObj)
 User *userParse(json_object *root)
 {
     User *user = (User *)malloc(sizeof(User));
-    user->email = (char *)json_object_get_string(json_object_object_get(root, "email"));
+    const char *email = json_object_get_string(json_object_object_get(root, "email"));
+    int length = strlen(email);
+    char *lowercaseEmail = (char *)malloc(length + 1);
+    for (int i = 0; i < length; i++) {
+        lowercaseEmail[i] = tolower(email[i]);
+    }
+    lowercaseEmail[length] = '\0';
+    user->email = lowercaseEmail;
     user->username = (char *)json_object_get_string(json_object_object_get(root, "username"));
     user->password = (char *)json_object_get_string(json_object_object_get(root, "password"));
     user->avatar = json_object_get_int(json_object_object_get(root, "avatar"));
@@ -31,29 +39,29 @@ User *userParse(json_object *root)
 }
 
 // Send all room information to client
-const char *roomToJson(const Room *roomObj)
+const char* roomToJson(Room* room)
 {
     json_object *root = json_object_new_object();
     json_object *players = json_object_new_array();
     json_object *data = json_object_new_object();
     json_object_object_add(root, "responseType", json_object_new_string("SUCCESS"));
     json_object_object_add(root, "data", data);
-    json_object_object_add(data, "name", json_object_new_string(roomObj->name));
-    json_object_object_add(data, "numberOfPlayers", json_object_new_int(roomObj->numberOfPlayers));
-    json_object_object_add(data, "maxNumberOfPlayers", json_object_new_int(roomObj->maxPlayers));
-    json_object_object_add(data, "port", json_object_new_int(roomObj->address.sin_port));
-    json_object_object_add(data, "round", json_object_new_int(roomObj->round));
+    json_object_object_add(data, "name", json_object_new_string(room->name));
+    json_object_object_add(data, "numberOfPlayers", json_object_new_int(room->numberOfPlayers));
+    json_object_object_add(data, "maxNumberOfPlayers", json_object_new_int(room->maxPlayers));
+    json_object_object_add(data, "port", json_object_new_int(room->address.sin_port));
+    json_object_object_add(data, "round", json_object_new_int(room->round));
     json_object_object_add(data, "players", players);
-    for (int i = 0; i < roomObj->numberOfPlayers; i++)
+    for (int i = 0; i < room->numberOfPlayers; i++)
     {
         json_object *player = json_object_new_object();
-        json_object_object_add(player, "username", json_object_new_string(roomObj->players[i].client.username));
-        json_object_object_add(player, "avatar", json_object_new_int(roomObj->players[i].client.avatar));
-        json_object_object_add(player, "score", json_object_new_int(roomObj->players[i].score));
-        json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(roomObj->players[i].status)));
+        json_object_object_add(player, "username", json_object_new_string(room->players[i].client.username));
+        json_object_object_add(player, "avatar", json_object_new_int(room->players[i].client.avatar));
+        json_object_object_add(player, "score", json_object_new_int(room->players[i].score));
+        json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(room->players[i].status)));
         json_object_array_add(players, player);
     }
-    switch (roomObj->language)
+    switch (room->language)
     {
     case ENGLISH:
         json_object_object_add(data, "language", json_object_new_string("en"));
@@ -78,19 +86,8 @@ Room *roomParse(json_object *root)
 {
     Room *room = (Room *)malloc(sizeof(Room));
     room->name = (char *)json_object_get_string(json_object_object_get(root, "name"));
-    room->numberOfPlayers = json_object_get_int(json_object_object_get(root, "numberOfPlayers"));
     room->maxPlayers = json_object_get_int(json_object_object_get(root, "maxNumberOfPlayers"));
-    room->round = json_object_get_int(json_object_object_get(root, "round"));
     room->language = getLanguageFromString(json_object_get_string(json_object_object_get(root, "language")));
-    json_object *players = json_object_object_get(root, "players");
-    for (int i = 0; i < room->numberOfPlayers; i++)
-    {
-        json_object *player = json_object_array_get_idx(players, i);
-        room->players[i].client.username = (char *)json_object_get_string(json_object_object_get(player, "username"));
-        room->players[i].client.avatar = json_object_get_int(json_object_object_get(player, "avatar"));
-        room->players[i].score = json_object_get_int(json_object_object_get(player, "score"));
-        room->players[i].status = getPlayerStatusFromString(json_object_get_string(json_object_object_get(player, "status")));
-    }
     return room;
 }
 
@@ -130,6 +127,24 @@ const char *createJsonListOfRooms()
         json_object_object_add(room, "numberOfPlayers", json_object_new_int(rooms[i].numberOfPlayers));
         json_object_object_add(room, "maxNumberOfPlayers", json_object_new_int(rooms[i].maxPlayers));
         json_object_object_add(room, "port", json_object_new_int(rooms[i].address.sin_port));
+        json_object_object_add(room, "round", json_object_new_int(rooms[i].round));
+        json_object_object_add(room, "inGame", json_object_new_boolean(rooms[i].inGame));
+        //language
+        switch (rooms[i].language)
+        {
+        case ENGLISH:
+            json_object_object_add(room, "language", json_object_new_string("en"));
+            break;
+        case ITALIAN:
+            json_object_object_add(room, "language", json_object_new_string("it"));
+            break;
+        case SPANISH:
+            json_object_object_add(room, "language", json_object_new_string("es"));
+            break;
+        case GERMAN:
+            json_object_object_add(room, "language", json_object_new_string("de"));
+            break;
+        }
         json_object_array_add(array, room);
     }
     const char *json = json_object_to_json_string(root);
