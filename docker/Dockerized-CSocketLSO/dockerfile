@@ -1,0 +1,17 @@
+# Commento: istruzione per l'immagine di base
+FROM ubuntu:latest
+
+# Copia i file del server nel container
+COPY LSOProject /usr/local/bin/server/
+
+# Esponi la porta su cui il server sarà in ascolto
+EXPOSE 3000
+
+# Esponi la porta su cui il server si collegherà al database
+EXPOSE 5432
+
+# Aggiungi il percorso del server all'ambiente
+ENV PATH="${PATH}:/usr/local/bin/server"
+
+# Comando predefinito per avviare il server quando il container viene eseguito
+CMD ["LSOProject"]
