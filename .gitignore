@@ -1,10 +1,7 @@
 /build
 /CMakeFiles
-/libpq-standalone
 Makefile
 CMakeCache.txt
 cmake_install.cmake
 .vscode
-test.c
-test
 ```
