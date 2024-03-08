@@ -3,22 +3,26 @@ project(LSOProject C)
 
 set(CMAKE_C_STANDARD 11)
 
-set(c_files
-        globals.c
-        handle_client.c
-        handle_player.c
-        handle_room.c
-        ./data/room.c
-        ./data/player.c
-        ./json/formatter.c
+file(GLOB_RECURSE c_files "${PROJECT_SOURCE_DIR}/src/*.c"
+        "${PROJECT_SOURCE_DIR}/src/data/*.c"
+        "${PROJECT_SOURCE_DIR}/src/json/*.c"
         )
-add_executable(LSOProject main.c ${c_files})
+
+file(GLOB_RECURSE h_files "${PROJECT_SOURCE_DIR}/src/*.h"
+        "${PROJECT_SOURCE_DIR}/src/data/*.h"
+        "${PROJECT_SOURCE_DIR}/src/json/*.h"
+        )
+
+add_executable(LSOProject
+        ${c_files}
+        ${h_files}
+        )
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBBSD REQUIRED libbsd)
 include_directories(${LIBBSD_INCLUDE_DIRS})
 
-add_subdirectory(json-c)
+add_subdirectory(lib/json-c)
 target_link_libraries(LSOProject PRIVATE json-c ${LIBBSD_LIBRARIES})
-add_subdirectory(libpq-standalone)
+add_subdirectory(lib/libpq-standalone)
 target_link_libraries(LSOProject PRIVATE PostgreSQL::PostgreSQL)
