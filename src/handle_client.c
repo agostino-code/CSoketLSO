@@ -47,7 +47,7 @@ void *handle_client(void *arg)
         // Il tuo codice per gestire il messaggio...
         // if PING, send PONG
 
-        //buffer vuoto
+        // buffer vuoto
         if (strlen(buffer) == 0)
         {
             continue;
@@ -60,7 +60,7 @@ void *handle_client(void *arg)
             continue;
         }
 
-        if(buffer[0] != '{' || buffer[strlen(buffer) - 1] != '}')
+        if (buffer[0] != '{' || buffer[strlen(buffer) - 1] != '}')
         {
             const char *errorMessage = createJsonErrorMessage("Invalid JSON");
             fprintf(stderr, "Invalid JSON\n");
@@ -202,12 +202,12 @@ void *handle_client(void *arg)
             }
 
             // Get the port from the request
-            int port = json_object_get_int(request->data);
+            char *address = json_object_get_string(json_object_object_get(request->data, "address"));
             // Find the room with the port
             Room *room = NULL;
             for (int i = 0; i < num_rooms; i++)
             {
-                if (rooms[i].port == port)
+                if (rooms[i].address == address)
                 {
                     room = &rooms[i];
                     break;
@@ -242,7 +242,7 @@ void *handle_client(void *arg)
 
             room->players[room->numberOfPlayers] = player;
             room->numberOfPlayers++;
-            
+
             // Send success message
             const char *successMessage = roomToJson(room);
             send(client_socket, successMessage, strlen(successMessage), 0);
@@ -268,7 +268,10 @@ void *handle_client(void *arg)
             // extract_room(request, &rooms[num_rooms]);
             rooms[num_rooms].numberOfPlayers = 0;
             rooms[num_rooms].inGame = false;
-            rooms[num_rooms].port = htons(3000 + num_rooms+1);
+            char baseAddress[] = "239.0.0.";
+            char address[16];
+            sprintf(address, "%s%d", baseAddress, num_rooms + 1);
+            rooms[num_rooms].address = address;
 
             Room *room = roomParse(request->data);
             rooms[num_rooms].name = room->name;
@@ -287,10 +290,7 @@ void *handle_client(void *arg)
             else
             {
                 num_rooms++;
-                // Send success message
-                char * port = malloc(6);
-                sprintf(port, "%d", rooms[num_rooms].port);
-                const char *successMessage = createJsonSuccessMessage(port);
+                const char *successMessage = createJsonSuccessMessage(address);
                 send(client_socket, successMessage, strlen(successMessage), 0);
             }
 

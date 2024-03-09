@@ -33,7 +33,7 @@ typedef struct {
     int round;
     enum language language;
     Player* players[MAX_PLAYERS];
-    int port;
+    char* address;
     pthread_t thread;
     bool inGame;
 } Room;

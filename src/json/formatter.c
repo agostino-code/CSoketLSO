@@ -49,7 +49,9 @@ const char* roomToJson(Room* room)
     json_object_object_add(data, "name", json_object_new_string(room->name));
     json_object_object_add(data, "numberOfPlayers", json_object_new_int(room->numberOfPlayers));
     json_object_object_add(data, "maxNumberOfPlayers", json_object_new_int(room->maxPlayers));
-    json_object_object_add(data, "port", json_object_new_int(room->port));
+    // json_object_object_add(data, "port", json_object_new_int(room->port));
+    json_object_object_add(data, "inGame", json_object_new_boolean(room->inGame));
+    json_object_object_add(data, "address", json_object_new_string(room->address));
     json_object_object_add(data, "round", json_object_new_int(room->round));
     json_object_object_add(data, "players", players);
     for (int i = 0; i < room->numberOfPlayers; i++)
@@ -137,7 +139,7 @@ const char *createJsonListOfRooms()
             json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(rooms[i].players[j]->status)));
             json_object_array_add(players, player);
         }
-        json_object_object_add(room, "port", json_object_new_int(rooms[i].port));
+        json_object_object_add(room, "address", json_object_new_string(rooms[i].address));
         json_object_object_add(room, "round", json_object_new_int(rooms[i].round));
         json_object_object_add(room, "inGame", json_object_new_boolean(rooms[i].inGame));
         //language

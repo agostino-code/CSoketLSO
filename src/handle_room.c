@@ -6,7 +6,6 @@
 #include "handle_player.h"
 #include "globals.h"
 
-#define GROUP "228.5.6.7"
 #define BUF_SIZE 1024
 void *handle_room(void *arg)
 {
@@ -27,14 +26,13 @@ fprintf(stderr, "handle_room\n");
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(room->port);
-    fprintf(stderr, "Multicast on the port: %d\n", addr.sin_port);
+    addr.sin_port = htons(SERVER_PORT);
     addr_len = sizeof(addr);
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1)
         error_handling("bind() error");
 
-    join_addr.imr_multiaddr.s_addr = inet_addr(GROUP);
+    join_addr.imr_multiaddr.s_addr = inet_addr(room->address);
     join_addr.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&join_addr, sizeof(join_addr)) == -1)
