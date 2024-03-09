@@ -9,7 +9,7 @@
 
 int main() {
     //Connect to database
-    conn = PQconnectdb("host=db port=5432 dbname=postgres user=postgres password=default");
+    conn = PQconnectdb("host=localhost port=5432 dbname=postgres user=postgres password=default");
     if (PQstatus(conn) == CONNECTION_BAD) {
         puts("We were unable to connect to the database");
         exit(0);
