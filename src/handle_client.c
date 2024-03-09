@@ -19,31 +19,31 @@ void *handle_client(void *arg)
 
         if (n < 0)
         {
-            perror("Errore nella lettura dal socket");
+            fprintf(stderr, "Failed to read from socket\n");
             break;
         }
         else if (n == 0)
         {
-            printf("Il client si è disconnesso.\n");
+            fprintf(stderr, "Client disconnected\n");
             // Client disconnected, remove it from the clients array
             pthread_mutex_lock(&clients_mutex);
             for (int i = 0; i < num_clients; i++)
             {
                 if (clients[i].socket == client_socket)
                 {
-                    printf("Client disconnected: %s:%hu\n", inet_ntoa(clients[i].address.sin_addr),
+                    printf("Client disconnected: %s:%d\n", inet_ntoa(clients[i].address.sin_addr),
                            ntohs(clients[i].address.sin_port));
                     memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(Client));
                     break;
                 }
             }
             num_clients--;
-            printf("Number of clients: %d\n", num_clients);
+            fprintf(stderr, "Total clients: %d\n", num_clients);
             pthread_mutex_unlock(&clients_mutex);
             break;
         }
 
-        printf("Messaggio ricevuto: %s\n", buffer);
+        fprintf(stderr, "Received message: %s\n", buffer);
         // Il tuo codice per gestire il messaggio...
         // if PING, send PONG
 
@@ -56,12 +56,14 @@ void *handle_client(void *arg)
         if (strcmp(buffer, "PING") == 0)
         {
             send(client_socket, "PONG", 4, 0);
+            fprintf(stderr, "Sent PONG\n");
             continue;
         }
 
         if(buffer[0] != '{' || buffer[strlen(buffer) - 1] != '}')
         {
             const char *errorMessage = createJsonErrorMessage("Invalid JSON");
+            fprintf(stderr, "Invalid JSON\n");
             send(client_socket, errorMessage, strlen(errorMessage), 0);
             continue;
         }
@@ -71,6 +73,7 @@ void *handle_client(void *arg)
         if (request->type == NULL)
         {
             const char *errorMessage = createJsonErrorMessage("Invalid JSON");
+            fprintf(stderr, "Invalid JSON\n");
             send(client_socket, errorMessage, strlen(errorMessage), 0);
             continue;
         }

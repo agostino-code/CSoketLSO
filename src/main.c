@@ -9,7 +9,7 @@
 
 int main() {
     //Connect to database
-    conn = PQconnectdb("host=localhost port=5432 dbname=postgres user=postgres password=default");
+    conn = PQconnectdb("host=db port=5432 dbname=postgres user=postgres password=default");
     if (PQstatus(conn) == CONNECTION_BAD) {
         puts("We were unable to connect to the database");
         exit(0);
@@ -52,17 +52,18 @@ int main() {
 
     // Bind the server socket to a specific address and port
     if (bind(server_socket, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        perror("Binding failed");
+        fprintf(stderr, "Failed to bind to port %d\n", SERVER_PORT);
+        fprintf(stderr, "Port %d might be in use\n", SERVER_PORT);
         return 1;
     }
 
     // Listen for incoming connections
     if (listen(server_socket, 5) < 0) {
-        perror("Listening failed");
+        fprintf(stderr, "Failed to listen on port %d\n", SERVER_PORT);
         return 1;
     }
 
-    printf("Server listening on port %d\n", SERVER_PORT);
+    fprintf(stderr, "Server started on port %d\n", SERVER_PORT);
 
     // Accept and handle incoming client connections
     while (1) {
@@ -72,7 +73,7 @@ int main() {
         // Accept a new client connection
         int client_socket = accept(server_socket, (struct sockaddr *) &client_addr, &client_addr_len);
         if (client_socket < 0) {
-            perror("Accept failed");
+            fprintf(stderr, "Failed to accept client connection\n");
             continue;
         }
 
@@ -83,16 +84,16 @@ int main() {
             clients[num_clients].address = client_addr;
             // strcpy(clients[num_clients].username, "Anonymous");
             clients[num_clients].username = "Anonymous";
-            printf("Client connected: %s:%hu\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            fprintf(stderr, "Client address: %s\n", inet_ntoa(client_addr.sin_addr));
             num_clients++;
-            printf("Number of clients: %d\n", num_clients);
+            fprintf(stderr, "Client connected, total clients: %d\n", num_clients);
         }
         pthread_mutex_unlock(&clients_mutex);
 
         // Create a new thread to handle the new client
         pthread_t tid;
         if (pthread_create(&tid, NULL, &handle_client, &client_socket) != 0) {
-            perror("Failed to create thread");
+            fprintf(stderr, "Failed to create thread\n");
             continue;
         }
 

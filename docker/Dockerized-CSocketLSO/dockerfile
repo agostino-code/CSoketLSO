@@ -5,7 +5,7 @@ FROM ubuntu:latest
 COPY LSOProject /usr/local/bin/server/
 
 # Esponi la porta su cui il server sarà in ascolto
-EXPOSE 3000
+EXPOSE 3000-4000
 
 # Esponi la porta su cui il server si collegherà al database
 EXPOSE 5432

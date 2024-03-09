@@ -18,11 +18,7 @@ add_executable(LSOProject
         ${h_files}
         )
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBBSD REQUIRED libbsd)
-include_directories(${LIBBSD_INCLUDE_DIRS})
-
 add_subdirectory(lib/json-c)
-target_link_libraries(LSOProject PRIVATE json-c ${LIBBSD_LIBRARIES})
+target_link_libraries(LSOProject PRIVATE json-c)
 add_subdirectory(lib/libpq-standalone)
 target_link_libraries(LSOProject PRIVATE PostgreSQL::PostgreSQL)
