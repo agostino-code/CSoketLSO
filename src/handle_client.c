@@ -202,7 +202,7 @@ void *handle_client(void *arg)
             }
 
             // Get the port from the request
-            char *address = json_object_get_string(json_object_object_get(request->data, "address"));
+            const char *address = json_object_get_string(json_object_object_get(request->data, "address"));
             // Find the room with the port
             Room *room = NULL;
             for (int i = 0; i < num_rooms; i++)
