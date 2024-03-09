@@ -5,7 +5,7 @@
     
     `docker pull postgres`
 
-2. Per creare e far partire un container da questo file yaml scrivere nel cmd il comando:
+2. Per creare e far partire un container da questo file yaml aprire il cmd dentro questa cartella e scrivere il comando:
     
     `docker-compose -f database.yml up`
 
@@ -19,9 +19,10 @@
 
 
 ## Server
-1. creare l'immagine del server CSocketLSO entrando nella cartella "Dockerized-CSocketLSO" e 
-   seguendo le istruzioni del readme che sta lì dentro
+1. Per costruire l' immagine docker della socket rimanere in questa cartella contente il dockerfile e scrivere il comando:
 
-2. tornare qui e far partire il container del server tramite:
+    `docker build -t csocketlso .`
+
+2. Per far partire il container del server scrivere:
     
     `docker-compose -f Dockerized-CSocketLSO.yml up`

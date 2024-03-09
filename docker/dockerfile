@@ -1,10 +1,13 @@
 # Commento: istruzione per l'immagine di base
 FROM ubuntu:latest
 
+# Aggiorna l'indice dei pacchetti e installa le librerie necessarie
+RUN apt-get update && apt-get install -y libjson-c-dev
+
 # Crea una directory all'interno del container
 RUN mkdir -p /usr/local/bin/server
 
-# Copia i file del server nel container
+# Copia l'eseguibile del server nel container
 COPY LSOProject /usr/local/bin/server/
 
 # Esponi la porta su cui il server sarà in ascolto
