@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "handle_room.h"
 #include "data/request.h"
@@ -8,6 +9,63 @@
 #include "globals.h"
 
 #define BUF_SIZE 1024
+
+void alarmHandler(int sig)
+{
+    fprintf(stderr, "Time is up!\n");
+    pthread_mutex_lock(&rooms_mutex);
+    for (int i = 0; i < num_rooms; i++)
+    {
+        if (rooms[i].inGame)
+        {
+            rooms[i].round++;
+            rooms[i].inGame = 0;
+            for (int j = 0; j < rooms[i].numberOfPlayers; j++)
+            {
+                if (rooms[i].players[j]->status == CHOOSER)
+                {
+                    rooms[i].players[j]->status = GUESSER;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&rooms_mutex);
+}
+
+void *reveal_letters(void *arg)
+{
+    Room *room = (Room *)arg;
+
+    char *mixedletters = room->mixedletters;
+
+    while (1)
+    {
+        sleep(15);
+
+        // Lock the room
+        pthread_mutex_lock(&rooms_mutex);
+
+        // Check if the game is still in progress
+        if (!room->inGame)
+        {
+            pthread_mutex_unlock(&rooms_mutex);
+            break;
+        }
+
+        // Take a letter from mixedLetters and insert it into revealedLetters
+        if (strlen(room->mixedletters) > 0)
+        {
+            strncat(room->revealedletters, room->mixedletters, 1);
+            memmove(mixedletters, room->mixedletters + 1, strlen(room->mixedletters));
+        }
+
+        // Unlock the room
+        pthread_mutex_unlock(&rooms_mutex);
+    }
+
+    return NULL;
+}
+
 void *handle_room(void *arg)
 {
     fprintf(stderr, "handle_room\n");
@@ -40,6 +98,7 @@ void *handle_room(void *arg)
         error_handling("setsockopt() error");
 
     bool newRound = false;
+    signal(SIGALRM, alarmHandler);
     while (1)
     {
         str_len = recvfrom(sock, buf, BUF_SIZE - 1, 0, (struct sockaddr *)&addr, &addr_len);
@@ -118,13 +177,13 @@ void *handle_room(void *arg)
                     break;
                 }
                 pthread_mutex_unlock(&rooms_mutex);
+                continue;
             }
         }
 
         if (request->type == "SERVER_MESSAGE")
         {
             fprintf(stderr, "Received server message: %s\n", request->data);
-            pthread_mutex_unlock(&clients_mutex);
             json_object *root = request->data;
             const char *message = json_object_get_string(json_object_object_get(root, "message"));
             const char *username = json_object_get_string(json_object_object_get(root, "username"));
@@ -138,18 +197,35 @@ void *handle_room(void *arg)
                 {
                     if (strcmp(room->players[i]->client.username, username) == 0)
                     {
-                        room->players[i]->score += 10;
+                        // TODO: Aggiungere punteggio pari alla lunghezza della parola
+                        room->players[i]->score += strlen(room->word);
+                        // TODO: Se il tempo di gioco è finito aumenta lo score dello CHOOSER di 15 che uguale al max - la lunghezza della parola, fai il max tra 1 e 15 - lunghezza parola
                     }
                 }
                 pthread_mutex_unlock(&rooms_mutex);
             }
         }
 
-        if(request->type == "NEW_CHOOSER")
+        if (request->type == "WORD_CHOSEN")
         {
-            fprintf(stderr, "Received server error: %s\n", request->data);
-
-    
+            fprintf(stderr, "Received server message: %s\n", request->data);
+            pthread_mutex_unlock(&clients_mutex);
+            json_object *root = request->data;
+            const char *word = json_object_get_string(json_object_object_get(root, "word"));
+            const char *mixedletters = json_object_get_string(json_object_object_get(root, "mixedletters"));
+            pthread_mutex_lock(&rooms_mutex);
+            room->word = word;
+            room->mixedletters = mixedletters;
+            room->inGame = 1;
+            pthread_mutex_unlock(&rooms_mutex);
+            pthread_t reveal_thread;
+            if (pthread_create(&reveal_thread, NULL, reveal_letters, room) != 0)
+            {
+                perror("pthread_create() error");
+                return NULL;
+            }
+            alarm(15*strlen(mixedletters));
+            continue;
         }
 
         if (newRound)
@@ -158,7 +234,9 @@ void *handle_room(void *arg)
             json_object_object_add(root, "requestType", json_object_new_string("NEW_CHOOSER"));
             pthread_mutex_lock(&rooms_mutex);
             int chooserIndex = rand() % room->numberOfPlayers;
+
             json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client.username));
+            room->players[chooserIndex]->status = CHOOSER;
             pthread_mutex_unlock(&rooms_mutex);
             const char *json = json_object_to_json_string(root);
 
@@ -181,6 +259,7 @@ void *handle_room(void *arg)
             num_rooms--;
         }
     }
+    free(room);
 
     // Close the socket
     close(sock);

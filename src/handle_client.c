@@ -207,14 +207,14 @@ void *handle_client(void *arg)
             // Find the room with the port
             pthread_mutex_lock(&rooms_mutex);
             Room *room = NULL;
-            for (int i = 0; i < num_rooms; i++)
-            {
-                if (rooms[i].address == address)
+            for(int i = 0; i < num_rooms; i++) {
+                if (strcmp(rooms[i].address, address) == 0)
                 {
                     room = &rooms[i];
                     break;
                 }
             }
+            
             // Send error message if room not found
             if (room == NULL)
             {
@@ -229,6 +229,8 @@ void *handle_client(void *arg)
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
                 continue;
             }
+            const char *successMessage = roomToJson(room);
+            send(client_socket, successMessage, strlen(successMessage), 0);
 
             Player *player = malloc(sizeof(Player));
             player->client = *client;
@@ -245,10 +247,9 @@ void *handle_client(void *arg)
             room->players[room->numberOfPlayers] = player;
             room->numberOfPlayers++;
             // Send success message
-            const char *successMessage = roomToJson(room);
+
             pthread_mutex_unlock(&rooms_mutex);
             fprintf(stderr, "Room joined: %s\n", successMessage);
-            send(client_socket, successMessage, strlen(successMessage), 0);
         }
 
         if (strcmp(requestType, "NEW_ROOM") == 0)
