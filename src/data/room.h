@@ -36,6 +36,9 @@ typedef struct {
     char* address;
     pthread_t thread;
     bool inGame;
+    char* word;
+    char* chooser;
+    char* mixedletters;
 } Room;
 
 #endif // ROOM_H

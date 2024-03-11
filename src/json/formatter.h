@@ -1,7 +1,7 @@
 #ifndef FORMATTER_H
 #define FORMATTER_H
 
-#include <json.h>
+#include <ctype.h> 
 #include "../data/user.h"
 #include "../data/room.h"
 #include "../data/player.h"

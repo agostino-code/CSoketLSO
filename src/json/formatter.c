@@ -49,7 +49,12 @@ const char* roomToJson(Room* room)
     json_object_object_add(data, "name", json_object_new_string(room->name));
     json_object_object_add(data, "numberOfPlayers", json_object_new_int(room->numberOfPlayers));
     json_object_object_add(data, "maxNumberOfPlayers", json_object_new_int(room->maxPlayers));
-    // json_object_object_add(data, "port", json_object_new_int(room->port));
+    if(room->word != NULL)
+        json_object_object_add(data, "word", json_object_new_string(room->word));
+    if(room->chooser != NULL)
+        json_object_object_add(data, "chooser", json_object_new_string(room->chooser));
+    if(room->mixedletters != NULL)
+        json_object_object_add(data, "mixedletters", json_object_new_string(room->mixedletters));
     json_object_object_add(data, "inGame", json_object_new_boolean(room->inGame));
     json_object_object_add(data, "address", json_object_new_string(room->address));
     json_object_object_add(data, "round", json_object_new_int(room->round));

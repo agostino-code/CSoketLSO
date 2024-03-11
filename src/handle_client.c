@@ -187,6 +187,7 @@ void *handle_client(void *arg)
         {
             pthread_mutex_lock(&clients_mutex);
             const Client *client = find_client_by_socket(client_socket);
+            pthread_mutex_unlock(&clients_mutex);
             if (client == NULL)
             {
                 const char *errorMessage = createJsonErrorMessage("Something went wrong");
@@ -204,6 +205,7 @@ void *handle_client(void *arg)
             // Get the port from the request
             const char *address = json_object_get_string(json_object_object_get(request->data, "address"));
             // Find the room with the port
+            pthread_mutex_lock(&rooms_mutex);
             Room *room = NULL;
             for (int i = 0; i < num_rooms; i++)
             {
@@ -242,9 +244,10 @@ void *handle_client(void *arg)
 
             room->players[room->numberOfPlayers] = player;
             room->numberOfPlayers++;
-
             // Send success message
             const char *successMessage = roomToJson(room);
+            pthread_mutex_unlock(&rooms_mutex);
+            fprintf(stderr, "Room joined: %s\n", successMessage);
             send(client_socket, successMessage, strlen(successMessage), 0);
         }
 
@@ -252,6 +255,7 @@ void *handle_client(void *arg)
         {
             pthread_mutex_lock(&clients_mutex);
             const Client *client = find_client_by_socket(client_socket);
+            pthread_mutex_unlock(&clients_mutex);
             if (client == NULL)
             {
                 const char *errorMessage = createJsonErrorMessage("Something went wrong");
@@ -265,6 +269,7 @@ void *handle_client(void *arg)
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
             }
 
+            pthread_mutex_lock(&rooms_mutex);
             // extract_room(request, &rooms[num_rooms]);
             rooms[num_rooms].numberOfPlayers = 0;
             rooms[num_rooms].inGame = false;
@@ -278,6 +283,20 @@ void *handle_client(void *arg)
             rooms[num_rooms].maxPlayers = room->maxPlayers;
             rooms[num_rooms].language = room->language;
 
+            Player *player = malloc(sizeof(Player));
+            player->client = *client;
+            player->score = 0;
+            if (room->inGame)
+            {
+                player->status = SPECTATOR;
+            }
+            else
+            {
+                player->status = GUESSER;
+            }
+
+            room->players[room->numberOfPlayers] = player;
+            room->numberOfPlayers++;
             // create thread for the room
             pthread_t tid;
             rooms[num_rooms].thread = tid;
@@ -293,7 +312,7 @@ void *handle_client(void *arg)
                 const char *successMessage = createJsonSuccessMessage(address);
                 send(client_socket, successMessage, strlen(successMessage), 0);
             }
-
+            pthread_mutex_unlock(&rooms_mutex);
             // Clean up
             free(room);
             pthread_mutex_unlock(&clients_mutex);
