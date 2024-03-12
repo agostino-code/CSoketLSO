@@ -39,7 +39,9 @@ void *reveal_letters(void *arg)
 {
     Room *room = (Room *)arg;
 
-    char *mixedletters = room->mixedletters;
+    char *mixedletters = (char *)malloc(strlen(room->mixedletters) + 1);
+    strcpy(mixedletters, room->mixedletters);
+    strcpy(room->revealedletters, "");
 
     while (1)
     {
@@ -222,11 +224,8 @@ void *handle_room(void *arg)
     fprintf(stderr, "Ho creato il Thread per la stanza %s\n", room->name);
 
     signal(SIGALRM, alarmHandler);
-    while (1)
-    {
-        struct mcreceiver *rc = mc_receiver_init(NULL, room->address, SERVER_PORT, &cb);
-        mc_receiver_uinit(rc);
-    }
+    struct mcreceiver *rc = mc_receiver_init(NULL, room->address, SERVER_PORT, &cb);
+    mc_receiver_uinit(rc);
 
     // elimina room dall'array di rooms
 
