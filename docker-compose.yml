@@ -1,18 +1,18 @@
 version: '3.4'
 
 services:
-  csoketlso:
-    image: csocketlso
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    networks:
-      - LSO
-    ports:
-      # Range of ports for the server
-      - "3000-3010:3000-3010"
-    depends_on:
-      - db
+  # csoketlso:
+  #   image: csocketlso
+  #   build:
+  #     context: .
+  #     dockerfile: ./Dockerfile
+  #   networks:
+  #     - LSO
+  #   ports:
+  #     # Range of ports for the server
+  #     - "3000-3010:3000-3010"
+  #   depends_on:
+  #     - db
       
   db:
     container_name: lsodb
@@ -22,8 +22,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: default
       POSTGRES_DB: postgres
-    networks:
-      - LSO
+    ports:
+      - 5432:5432
+    # networks:
+    #   - LSO
     volumes:
       - dbdata:/var/lib/postgresql/data
     
@@ -31,6 +33,6 @@ volumes:
   dbdata:
     driver: local
 
-networks:
-  LSO:
-    driver: bridge
+# networks:
+#   LSO:
+#     driver: bridge
