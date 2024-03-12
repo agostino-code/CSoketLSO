@@ -68,55 +68,70 @@ void *reveal_letters(void *arg)
 
 void *handle_room(void *arg)
 {
-    fprintf(stderr, "handle_room\n");
 
     Room *room = (Room *)arg;
+    fprintf(stderr, "Ho creato il Thread per la stanza %s\n", room->name);
     /* Create a datagram socket on which to receive. */
     int sock;
-    struct sockaddr_in addr;
-    struct ip_mreq join_addr;
-    char buf[1024];
+    struct sockaddr_in addr, multicast_addr;
+    struct ip_mreq mreq;
+    char buf[BUF_SIZE];
     int str_len, addr_len;
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock == -1)
         error_handling("socket() error");
 
+    unsigned yes = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+    {
+        perror("Reusing ADDR failed");
+        exit(1);
+    }
+
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(SERVER_PORT);
-    addr_len = sizeof(addr);
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1)
         error_handling("bind() error");
 
-    join_addr.imr_multiaddr.s_addr = inet_addr(room->address);
-    join_addr.imr_interface.s_addr = htonl(INADDR_ANY);
+    mreq.imr_multiaddr.s_addr = inet_addr(room->address);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
-    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&join_addr, sizeof(join_addr)) == -1)
+    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&mreq, sizeof(mreq)) == -1)
         error_handling("setsockopt() error");
+
+    int loopback = 0;
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback)) < 0)
+    {
+        perror("Setting IP_MULTICAST_LOOP error");
+        exit(1);
+    }
+
+    // Set up the sockaddr_in structure
+    memset(&multicast_addr, 0, sizeof(multicast_addr));
+    multicast_addr.sin_family = AF_INET;
+    multicast_addr.sin_addr.s_addr = inet_addr(room->address);
+    multicast_addr.sin_port = htons(SERVER_PORT);
 
     bool newRound = false;
     signal(SIGALRM, alarmHandler);
     while (1)
     {
-        str_len = recvfrom(sock, buf, BUF_SIZE - 1, 0, (struct sockaddr *)&addr, &addr_len);
+
+        addr_len = sizeof(addr);
+        str_len = recvfrom(sock, buf, BUF_SIZE, 0, (struct sockaddr *)&addr, &addr_len);
         if (str_len < 0)
         {
-            perror("recvfrom() error");
+            error_handling("recvfrom() error");
             break;
         }
         if (str_len > 0)
             buf[str_len] = '\0';
 
         fprintf(stderr, "Received: %s\n", buf);
-
-        // Send the received message to the client
-        if (sendto(sock, buf, str_len, 0, (struct sockaddr *)&addr, sizeof(addr)) == -1)
-        {
-            perror("sendto() error");
-        }
 
         Request *request = parseRequest(buf);
 
@@ -130,9 +145,8 @@ void *handle_room(void *arg)
             {
                 pthread_mutex_lock(&rooms_mutex);
                 fprintf(stderr, "Received server notify: %s\n", request->data);
-                json_object *player = json_object_object_get(root, "user");
-                const char *username = json_object_get_string(json_object_object_get(player, "username"));
-                const char *avatar = json_object_get_string(json_object_object_get(player, "avatar"));
+                const char *username = json_object_get_string(json_object_object_get(root, "username"));
+                const char *avatar = json_object_get_string(json_object_object_get(root, "avatar"));
                 room->players[room->numberOfPlayers] = (Player *)malloc(sizeof(Player));
                 room->players[room->numberOfPlayers]->client.username = username;
                 room->players[room->numberOfPlayers]->client.avatar = atoi(avatar);
@@ -157,8 +171,7 @@ void *handle_room(void *arg)
             if (strcmp(whatHappened, "LEFT") == 0)
             {
                 fprintf(stderr, "Received server notify: %s\n", request->data);
-                json_object *player = json_object_object_get(root, "user");
-                const char *username = json_object_get_string(json_object_object_get(player, "username"));
+                const char *username = json_object_get_string(json_object_object_get(root, "username"));
                 pthread_mutex_lock(&rooms_mutex);
                 for (int i = 0; i < room->numberOfPlayers; i++)
                 {
@@ -224,7 +237,7 @@ void *handle_room(void *arg)
                 perror("pthread_create() error");
                 return NULL;
             }
-            alarm(15*strlen(mixedletters));
+            alarm(15 * strlen(mixedletters));
             continue;
         }
 
@@ -240,7 +253,10 @@ void *handle_room(void *arg)
             pthread_mutex_unlock(&rooms_mutex);
             const char *json = json_object_to_json_string(root);
 
-            sendto(sock, json, strlen(json), 0, (struct sockaddr *)&addr, sizeof(addr));
+            if (sendto(sock, buf, strlen(buf), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr)) != strlen(buf))
+            {
+                error_handling("sendto() sent a different number of bytes than expected");
+            }
 
             newRound = false;
         }

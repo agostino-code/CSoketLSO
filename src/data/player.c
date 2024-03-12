@@ -2,11 +2,11 @@
 #include <string.h>
 
 enum player_status getPlayerStatusFromString(const char* statusString) {
-    if (strcmp(statusString, "spectator") == 0) {
+    if (strcmp(statusString, "SPECTATOR") == 0) {
         return SPECTATOR;
-    } else if (strcmp(statusString, "guesser") == 0) {
+    } else if (strcmp(statusString, "GUESSER") == 0) {
         return GUESSER;
-    } else if (strcmp(statusString, "chooser") == 0) {
+    } else if (strcmp(statusString, "CHOOSER") == 0) {
         return CHOOSER;
     } else {
         // Handle unknown status or return a default value
@@ -17,13 +17,13 @@ enum player_status getPlayerStatusFromString(const char* statusString) {
 const char* getPlayerStatusString(enum player_status status) {
     switch (status) {
         case SPECTATOR:
-            return "spectator";
+            return "SPECTATOR";
         case GUESSER:
-            return "guesser";
+            return "GUESSER";
         case CHOOSER:
-            return "chooser";
+            return "CHOOSER";
         default:
             // Handle unknown status or return a default value
-            return "spectator"; // You can choose a different default if needed
+            return "SPECTATOR"; // You can choose a different default if needed
     }
 }

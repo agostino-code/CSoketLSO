@@ -20,12 +20,10 @@ void *handle_client(void *arg)
         if (n < 0)
         {
             fprintf(stderr, "Failed to read from socket\n");
-            break;
+            continue;
         }
         else if (n == 0)
         {
-            fprintf(stderr, "Client disconnected\n");
-            // Client disconnected, remove it from the clients array
             pthread_mutex_lock(&clients_mutex);
             for (int i = 0; i < num_clients; i++)
             {
@@ -287,17 +285,9 @@ void *handle_client(void *arg)
             Player *player = malloc(sizeof(Player));
             player->client = *client;
             player->score = 0;
-            if (room->inGame)
-            {
-                player->status = SPECTATOR;
-            }
-            else
-            {
-                player->status = GUESSER;
-            }
-
-            room->players[room->numberOfPlayers] = player;
-            room->numberOfPlayers++;
+            player->status = GUESSER;
+            rooms->players[room->numberOfPlayers] = player;
+            rooms->numberOfPlayers++;
             // create thread for the room
             pthread_t tid;
             rooms[num_rooms].thread = tid;
