@@ -5,13 +5,14 @@
 #include <multicast.h>
 
 #include "handle_room.h"
-#include "data/request.h"
+#include "data/response.h"
 #include "json/formatter.h"
 #include "globals.h"
 
 #define BUF_SIZE 1024
 
 Room *room;
+bool running = true;
 
 void alarmHandler(int sig)
 {
@@ -85,29 +86,32 @@ void close_room(Room *room)
             num_rooms--;
         }
     }
+    running = false;
 }
 
 void cb(struct mcpacket *packet)
 {
     bool newRound = false;
     // printf("[%s]-[Len:%d]-[From:%s]\n", packet->data, packet->len, packet->src_addr);
-    Request *request = parseRequest(packet->data);
+    Response *response = parseResponse(packet->data);
 
-    if (strcmp(request->type, "SERVER_NOTIFICATION") == 0)
+    if (strcmp(response->type, "SERVER_NOTIFICATION") == 0)
     {
-        const char *notification = json_object_get_string(request->data);
+        const char *notification = json_object_get_string(response->data);
         fprintf(stderr, "Received server notify: %s\n", notification);
 
-        json_object *root = request->data;
+        json_object *root = response->data;
         const char *whatHappened = json_object_get_string(json_object_object_get(root, "whatHappened"));
         if (strcmp(whatHappened, "JOINED") == 0)
         {
             pthread_mutex_lock(&rooms_mutex);
             const char *username = json_object_get_string(json_object_object_get(root, "username"));
-            const char *avatar = json_object_get_string(json_object_object_get(root, "avatar"));
+            int avatar = json_object_get_int(json_object_object_get(root, "avatar"));
             room->players[room->numberOfPlayers] = (Player *)malloc(sizeof(Player));
-            room->players[room->numberOfPlayers]->client.username = username;
-            room->players[room->numberOfPlayers]->client.avatar = atoi(avatar);
+            Client*client;
+            client->username = username;
+            client->avatar = avatar;
+            room->players[room->numberOfPlayers]->client = client;
             room->players[room->numberOfPlayers]->score = 0;
             room->numberOfPlayers++;
             if (room->inGame == true)
@@ -132,7 +136,7 @@ void cb(struct mcpacket *packet)
             pthread_mutex_lock(&rooms_mutex);
             for (int i = 0; i < room->numberOfPlayers; i++)
             {
-                if (strcmp(room->players[i]->client.username, username) == 0)
+                if (strcmp(room->players[i]->client->username, username) == 0)
                 {
                     free(room->players[i]);
                     for (int j = i; j < room->numberOfPlayers - 1; j++)
@@ -150,10 +154,10 @@ void cb(struct mcpacket *packet)
         }
     }
 
-    if (strcmp(request->type, "SERVER_MESSAGE") == 0)
+    if (strcmp(response->type, "SERVER_MESSAGE") == 0)
     {
-        fprintf(stderr, "Received server message: %s\n", json_object_get_string(request->data));
-        json_object *root = request->data;
+        fprintf(stderr, "Received server message: %s\n", json_object_get_string(response->data));
+        json_object *root = response->data;
         const char *message = json_object_get_string(json_object_object_get(root, "message"));
         const char *username = json_object_get_string(json_object_object_get(root, "username"));
         bool isGuessed = json_object_get_boolean(json_object_object_get(root, "isGuessed"));
@@ -164,7 +168,7 @@ void cb(struct mcpacket *packet)
             newRound = true;
             for (int i = 0; i < room->numberOfPlayers; i++)
             {
-                if (strcmp(room->players[i]->client.username, username) == 0)
+                if (strcmp(room->players[i]->client->username, username) == 0)
                 {
                     // TODO: Aggiungere punteggio pari alla lunghezza della parola
                     room->players[i]->score += strlen(room->word);
@@ -175,11 +179,11 @@ void cb(struct mcpacket *packet)
         }
     }
 
-    if (strcmp(request->type, "WORD_CHOSEN") == 0)
+    if (strcmp(response->type, "WORD_CHOSEN") == 0)
     {
-        fprintf(stderr, "Received server message: %s\n", json_object_get_string(request->data));
+        fprintf(stderr, "Received server message: %s\n", json_object_get_string(response->data));
         pthread_mutex_unlock(&clients_mutex);
-        json_object *root = request->data;
+        json_object *root = response->data;
         const char *word = json_object_get_string(json_object_object_get(root, "word"));
         const char *mixedletters = json_object_get_string(json_object_object_get(root, "mixedletters"));
         pthread_mutex_lock(&rooms_mutex);
@@ -199,17 +203,17 @@ void cb(struct mcpacket *packet)
     if (newRound)
     {
         json_object *root = json_object_new_object();
-        json_object_object_add(root, "requestType", json_object_new_string("NEW_CHOOSER"));
+        json_object_object_add(root, "responseType", json_object_new_string("NEW_CHOOSER"));
         pthread_mutex_lock(&rooms_mutex);
         int chooserIndex = rand() % room->numberOfPlayers;
 
-        json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client.username));
+        json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client->username));
         room->players[chooserIndex]->status = CHOOSER;
         pthread_mutex_unlock(&rooms_mutex);
         const char *json = json_object_to_json_string(root);
-        
-        struct mcsender *sc = mc_sender_init(NULL,room->address, SERVER_PORT);
-        mc_sender_send(sc,json, strlen(json) + 1);
+
+        struct mcsender *sc = mc_sender_init(NULL, room->address, SERVER_PORT);
+        mc_sender_send(sc, json, strlen(json) + 1);
         mc_sender_uinit(sc);
 
         newRound = false;
@@ -225,9 +229,11 @@ void *handle_room(void *arg)
 
     signal(SIGALRM, alarmHandler);
     struct mcreceiver *rc = mc_receiver_init(NULL, room->address, SERVER_PORT, &cb);
+
+    while (running)
+    {
+        sleep(1);
+    }
     mc_receiver_uinit(rc);
-
-    // elimina room dall'array di rooms
-
     return 0;
 }

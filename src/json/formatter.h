@@ -6,6 +6,7 @@
 #include "../data/room.h"
 #include "../data/player.h"
 #include "../data/request.h"
+#include "../data/response.h"
 
 const char *userToJson(const User *userObj);
 
@@ -26,5 +27,7 @@ const char *createJsonListOfRooms();
 
 // string to REQUEST
 Request *parseRequest(const char *string);
+
+Response *parseResponse(const char *string);
 
 #endif

@@ -79,8 +79,8 @@ const char* roomToJson(Room* room)
     for (int i = 0; i < room->numberOfPlayers; i++)
     {
         json_object *player = json_object_new_object();
-        json_object_object_add(player, "username", json_object_new_string(room->players[i]->client.username));
-        json_object_object_add(player, "avatar", json_object_new_int(room->players[i]->client.avatar));
+        json_object_object_add(player, "username", json_object_new_string(room->players[i]->client->username));
+        json_object_object_add(player, "avatar", json_object_new_int(room->players[i]->client->avatar));
         json_object_object_add(player, "score", json_object_new_int(room->players[i]->score));
         json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(room->players[i]->status)));
         json_object_array_add(players, player);
@@ -140,8 +140,8 @@ const char *createJsonListOfRooms()
         for (int j = 0; j < rooms[i].numberOfPlayers; j++)
         {
             json_object *player = json_object_new_object();
-            json_object_object_add(player, "username", json_object_new_string(rooms[i].players[j]->client.username));
-            json_object_object_add(player, "avatar", json_object_new_int(rooms[i].players[j]->client.avatar));
+            json_object_object_add(player, "username", json_object_new_string(rooms[i].players[j]->client->username));
+            json_object_object_add(player, "avatar", json_object_new_int(rooms[i].players[j]->client->avatar));
             json_object_object_add(player, "score", json_object_new_int(rooms[i].players[j]->score));
             json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(rooms[i].players[j]->status)));
             json_object_array_add(players, player);
@@ -180,4 +180,13 @@ Request *parseRequest(const char *string)
     request->type = json_object_get_string(json_object_object_get(root, "requestType"));
     request->data = json_object_object_get(root, "data");
     return request;
+}
+
+Response *parseResponse(const char *string)
+{
+    Response *response = (Response *)malloc(sizeof(Response));
+    json_object *root = json_tokener_parse(string);
+    response->type = json_object_get_string(json_object_object_get(root, "responseType"));
+    response->data = json_object_object_get(root, "data");
+    return response;
 }

@@ -15,7 +15,7 @@ const char* getPlayerStatusString(enum player_status status);
 typedef struct {
     int score;
     enum player_status status;
-    Client client;
+    const Client* client;
 } Player;
 
 #endif // PLAYER_H

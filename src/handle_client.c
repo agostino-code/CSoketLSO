@@ -184,7 +184,7 @@ void *handle_client(void *arg)
         if (strcmp(requestType, "JOIN_ROOM") == 0)
         {
             pthread_mutex_lock(&clients_mutex);
-            const Client *client = find_client_by_socket(client_socket);
+            Client *client = find_client_by_socket(client_socket);
             pthread_mutex_unlock(&clients_mutex);
             if (client == NULL)
             {
@@ -231,7 +231,7 @@ void *handle_client(void *arg)
             send(client_socket, successMessage, strlen(successMessage), 0);
 
             Player *player = malloc(sizeof(Player));
-            player->client = *client;
+            player->client = client;
             player->score = 0;
             if (room->inGame)
             {
@@ -283,7 +283,8 @@ void *handle_client(void *arg)
             rooms[num_rooms].language = room->language;
 
             Player *player = malloc(sizeof(Player));
-            player->client = *client;
+
+            player->client = client;
             player->score = 0;
             player->status = GUESSER;
             rooms->players[room->numberOfPlayers] = player;
