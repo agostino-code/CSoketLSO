@@ -105,12 +105,17 @@ void cb(struct mcpacket *packet)
         if (strcmp(whatHappened, "JOINED") == 0)
         {
             pthread_mutex_lock(&rooms_mutex);
-            const char *username = json_object_get_string(json_object_object_get(root, "username"));
-            int avatar = json_object_get_int(json_object_object_get(root, "avatar"));
+            json_object *player = json_object_object_get(root, "player");
+            const char *username = json_object_get_string(json_object_object_get(player, "username"));
             room->players[room->numberOfPlayers] = (Player *)malloc(sizeof(Player));
             Client*client;
-            client->username = username;
-            client->avatar = avatar;
+            for (int i = 0; i < num_clients; i++)
+            {
+                if (strcmp(clients[i].username, username) == 0)
+                {
+                    client = &clients[i];
+                }
+            }
             room->players[room->numberOfPlayers]->client = client;
             room->players[room->numberOfPlayers]->score = 0;
             room->numberOfPlayers++;
