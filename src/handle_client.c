@@ -165,7 +165,6 @@ void *handle_client(void *arg)
             Client *client = find_client_by_socket(client_socket);
             client->username = user->username;
             client->avatar = user->avatar;
-
             // success message
             const char *successMessage = createJsonSuccessMessage("User created successfully");
             send(client_socket, successMessage, strlen(successMessage), 0);
@@ -183,9 +182,7 @@ void *handle_client(void *arg)
 
         if (strcmp(requestType, "JOIN_ROOM") == 0)
         {
-            pthread_mutex_lock(&clients_mutex);
             Client *client = find_client_by_socket(client_socket);
-            pthread_mutex_unlock(&clients_mutex);
             if (client == NULL)
             {
                 const char *errorMessage = createJsonErrorMessage("Something went wrong");
@@ -203,7 +200,6 @@ void *handle_client(void *arg)
             // Get the port from the request
             const char *address = json_object_get_string(json_object_object_get(request->data, "address"));
             // Find the room with the port
-            pthread_mutex_lock(&rooms_mutex);
             Room *room = NULL;
             for(int i = 0; i < num_rooms; i++) {
                 if (strcmp(rooms[i].address, address) == 0)
@@ -230,16 +226,12 @@ void *handle_client(void *arg)
             const char *successMessage = roomToJson(room);
             send(client_socket, successMessage, strlen(successMessage), 0);
             // Send success message
-
-            pthread_mutex_unlock(&rooms_mutex);
             fprintf(stderr, "Room joined: %s\n", successMessage);
         }
 
         if (strcmp(requestType, "NEW_ROOM") == 0)
         {
-            pthread_mutex_lock(&clients_mutex);
             const Client *client = find_client_by_socket(client_socket);
-            pthread_mutex_unlock(&clients_mutex);
             if (client == NULL)
             {
                 const char *errorMessage = createJsonErrorMessage("Something went wrong");
@@ -252,7 +244,6 @@ void *handle_client(void *arg)
                 const char *errorMessage = createJsonErrorMessage("You must be logged in to create a room");
                 send(client_socket, errorMessage, strlen(errorMessage), 0);
             }
-
             pthread_mutex_lock(&rooms_mutex);
             // extract_room(request, &rooms[num_rooms]);
             rooms[num_rooms].numberOfPlayers = 0;
@@ -268,9 +259,7 @@ void *handle_client(void *arg)
             rooms[num_rooms].language = room->language;
 
             Player *player = malloc(sizeof(Player));
-            pthread_mutex_lock(&clients_mutex);
             player->client = client;
-            pthread_mutex_unlock(&clients_mutex);
             player->score = 0;
             player->status = GUESSER;
             rooms->players[room->numberOfPlayers] = player;
@@ -278,6 +267,8 @@ void *handle_client(void *arg)
             // create thread for the room
             pthread_t tid;
             rooms[num_rooms].thread = tid;
+            pthread_mutex_unlock(&rooms_mutex);
+
             int err = pthread_create(&tid, NULL, &handle_room, &rooms[num_rooms]);
             if (err != 0)
             {
@@ -290,10 +281,8 @@ void *handle_client(void *arg)
                 const char *successMessage = createJsonSuccessMessage(address);
                 send(client_socket, successMessage, strlen(successMessage), 0);
             }
-            pthread_mutex_unlock(&rooms_mutex);
             // Clean up
             free(room);
-            pthread_mutex_unlock(&clients_mutex);
         }
     }
 

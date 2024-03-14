@@ -9,14 +9,6 @@
 #include "player.h"
 #include "../config.h"
 
-enum max_player {
-    TEN = 10,
-    FIFTEEN = 15,
-    TWENTY = 20
-};
-
-enum max_player getMaxPlayerFromNumber(int number);
-
 enum language {
     ENGLISH,
     ITALIAN,
@@ -29,8 +21,7 @@ enum language getLanguageFromString(const char* langString);
 typedef struct {
     char* name;
     unsigned long numberOfPlayers;
-    enum max_player maxPlayers;
-    int round;
+    int maxPlayers;
     enum language language;
     Player* players[MAX_PLAYERS];
     char* address;
@@ -39,6 +30,7 @@ typedef struct {
     const char* word;
     const char* mixedletters;
     char* revealedletters;
+    const char* chooser;
 } Room;
 
 #endif // ROOM_H

@@ -51,7 +51,6 @@ const char* roomToJson(Room* room)
     json_object_object_add(data, "maxNumberOfPlayers", json_object_new_int(room->maxPlayers));
     json_object_object_add(data, "inGame", json_object_new_boolean(room->inGame));
     json_object_object_add(data, "address", json_object_new_string(room->address));
-    json_object_object_add(data, "round", json_object_new_int(room->round));
     json_object_object_add(data, "players", players);
     if(room->word != NULL)
         json_object_object_add(data, "word", json_object_new_string(room->word));
@@ -124,7 +123,6 @@ const char *createJsonSuccessMessage(const char *successMessage)
 
 const char *createJsonListOfRooms()
 {
-    pthread_mutex_lock(&rooms_mutex);
     json_object *root = json_object_new_object();
     json_object *array = json_object_new_array();
     json_object_object_add(root, "responseType", json_object_new_string("SUCCESS"));
@@ -139,17 +137,14 @@ const char *createJsonListOfRooms()
         json_object *players = json_object_new_array();
         for (int j = 0; j < rooms[i].numberOfPlayers; j++)
         {
-            pthread_mutex_lock(&clients_mutex);
             json_object *player = json_object_new_object();
             json_object_object_add(player, "username", json_object_new_string(rooms[i].players[j]->client->username));
             json_object_object_add(player, "avatar", json_object_new_int(rooms[i].players[j]->client->avatar));
-            pthread_mutex_unlock(&clients_mutex);
             json_object_object_add(player, "score", json_object_new_int(rooms[i].players[j]->score));
             json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(rooms[i].players[j]->status)));
             json_object_array_add(players, player);
         }
         json_object_object_add(room, "address", json_object_new_string(rooms[i].address));
-        json_object_object_add(room, "round", json_object_new_int(rooms[i].round));
         json_object_object_add(room, "inGame", json_object_new_boolean(rooms[i].inGame));
         //language
         switch (rooms[i].language)
@@ -170,7 +165,6 @@ const char *createJsonListOfRooms()
         json_object_array_add(array, room);
     }
     const char *json = json_object_to_json_string(root);
-    pthread_mutex_unlock(&rooms_mutex);
     return json;
 }
 

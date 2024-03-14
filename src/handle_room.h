@@ -2,10 +2,15 @@
 #define HANDLE_ROOM_H
 
 #include "data/room.h"
+#include <multicast.h>
+
 // Include any necessary headers here
 
 // Function prototypes
 void *handle_room(void *arg);
-void error_handling(char *message);
+void *reveal_letters(void *arg);
+void finish_game(const char *username);
+void start_game();
+void cb(struct mcpacket *packet);
 
 #endif // HANDLE_ROOM_H
