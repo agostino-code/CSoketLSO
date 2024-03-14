@@ -20,13 +20,13 @@ void alarmHandler(int sig)
     pthread_mutex_lock(&rooms_mutex);
     for (int i = 0; i < num_rooms; i++)
     {
-        if (rooms[i].inGame)
+        if (rooms[i].inGame = 1)
         {
             rooms[i].round++;
             rooms[i].inGame = 0;
             for (int j = 0; j < rooms[i].numberOfPlayers; j++)
             {
-                if (rooms[i].players[j]->status == CHOOSER)
+                if (rooms[i].players[j]->status == CHOOSER && rooms[i].players[j]->status == SPECTATOR)
                 {
                     rooms[i].players[j]->status = GUESSER;
                 }
@@ -42,7 +42,8 @@ void *reveal_letters(void *arg)
 
     char *mixedletters = (char *)malloc(strlen(room->mixedletters) + 1);
     strcpy(mixedletters, room->mixedletters);
-    strcpy(room->revealedletters, "");
+    room->revealedletters = (char *)malloc(strlen(room->word) + 1);
+    room->revealedletters[0] = '\0';
 
     while (1)
     {
@@ -59,10 +60,15 @@ void *reveal_letters(void *arg)
         }
 
         // Take a letter from mixedLetters and insert it into revealedLetters
-        if (strlen(room->mixedletters) > 0)
+        if (strlen(mixedletters) > 0)
         {
-            strncat(room->revealedletters, room->mixedletters, 1);
-            memmove(mixedletters, room->mixedletters + 1, strlen(room->mixedletters));
+            room->revealedletters[strlen(room->revealedletters)] = mixedletters[0];
+            room->revealedletters[strlen(room->revealedletters) + 1] = '\0';
+            for (int i = 0; i < strlen(mixedletters); i++)
+            {
+                mixedletters[i] = mixedletters[i + 1];
+            }
+            room->round++;
         }
 
         // Unlock the room
@@ -91,7 +97,7 @@ void close_room(Room *room)
 
 void cb(struct mcpacket *packet)
 {
-    bool newRound = false;
+    bool newGame = false;
     // printf("[%s]-[Len:%d]-[From:%s]\n", packet->data, packet->len, packet->src_addr);
     Response *response = parseResponse(packet->data);
 
@@ -108,7 +114,8 @@ void cb(struct mcpacket *packet)
             json_object *player = json_object_object_get(root, "player");
             const char *username = json_object_get_string(json_object_object_get(player, "username"));
             room->players[room->numberOfPlayers] = (Player *)malloc(sizeof(Player));
-            Client*client;
+            pthread_mutex_unlock(&clients_mutex);
+            Client *client;
             for (int i = 0; i < num_clients; i++)
             {
                 if (strcmp(clients[i].username, username) == 0)
@@ -117,6 +124,7 @@ void cb(struct mcpacket *packet)
                 }
             }
             room->players[room->numberOfPlayers]->client = client;
+            pthread_mutex_unlock(&clients_mutex);
             room->players[room->numberOfPlayers]->score = 0;
             room->numberOfPlayers++;
             if (room->inGame == true)
@@ -129,7 +137,7 @@ void cb(struct mcpacket *packet)
                 if (room->numberOfPlayers > 1)
                 {
                     room->inGame = 1;
-                    newRound = true;
+                    newGame = true;
                 }
             }
             pthread_mutex_unlock(&rooms_mutex);
@@ -168,19 +176,26 @@ void cb(struct mcpacket *packet)
         bool isGuessed = json_object_get_boolean(json_object_object_get(root, "isGuessed"));
         if (isGuessed)
         {
+
+            fprintf(stderr, "The word has been guessed by %s\n", username);
             pthread_mutex_lock(&rooms_mutex);
             room->round++;
-            newRound = true;
+            newGame = true;
+            // The alarm is reset
+            alarm(0);
+            alarm(0.1);
+            fprintf(stderr, "The alarm has been reset\n");
             for (int i = 0; i < room->numberOfPlayers; i++)
             {
+                pthread_mutex_lock(&clients_mutex);
                 if (strcmp(room->players[i]->client->username, username) == 0)
                 {
-                    // TODO: Aggiungere punteggio pari alla lunghezza della parola
                     room->players[i]->score += strlen(room->word);
-                    // TODO: Se il tempo di gioco è finito aumenta lo score dello CHOOSER di 15 che uguale al max - la lunghezza della parola, fai il max tra 1 e 15 - lunghezza parola
+                    fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
                 }
+                pthread_mutex_unlock(&clients_mutex);
+                pthread_mutex_unlock(&rooms_mutex);
             }
-            pthread_mutex_unlock(&rooms_mutex);
         }
     }
 
@@ -205,14 +220,17 @@ void cb(struct mcpacket *packet)
         alarm(15 * strlen(mixedletters));
     }
 
-    if (newRound)
+    if (newGame)
     {
+        sleep(5);
         json_object *root = json_object_new_object();
         json_object_object_add(root, "responseType", json_object_new_string("NEW_CHOOSER"));
         pthread_mutex_lock(&rooms_mutex);
         int chooserIndex = rand() % room->numberOfPlayers;
-
+        room->round = 0;
+        pthread_mutex_unlock(&clients_mutex);
         json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client->username));
+        pthread_mutex_unlock(&clients_mutex);
         room->players[chooserIndex]->status = CHOOSER;
         pthread_mutex_unlock(&rooms_mutex);
         const char *json = json_object_to_json_string(root);
@@ -221,7 +239,7 @@ void cb(struct mcpacket *packet)
         mc_sender_send(sc, json, strlen(json) + 1);
         mc_sender_uinit(sc);
 
-        newRound = false;
+        newGame = false;
     }
 }
 

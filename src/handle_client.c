@@ -229,21 +229,6 @@ void *handle_client(void *arg)
             }
             const char *successMessage = roomToJson(room);
             send(client_socket, successMessage, strlen(successMessage), 0);
-
-            Player *player = malloc(sizeof(Player));
-            player->client = client;
-            player->score = 0;
-            if (room->inGame)
-            {
-                player->status = SPECTATOR;
-            }
-            else
-            {
-                player->status = GUESSER;
-            }
-
-            room->players[room->numberOfPlayers] = player;
-            room->numberOfPlayers++;
             // Send success message
 
             pthread_mutex_unlock(&rooms_mutex);
@@ -283,8 +268,9 @@ void *handle_client(void *arg)
             rooms[num_rooms].language = room->language;
 
             Player *player = malloc(sizeof(Player));
-
+            pthread_mutex_lock(&clients_mutex);
             player->client = client;
+            pthread_mutex_unlock(&clients_mutex);
             player->score = 0;
             player->status = GUESSER;
             rooms->players[room->numberOfPlayers] = player;

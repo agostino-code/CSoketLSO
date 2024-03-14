@@ -139,9 +139,11 @@ const char *createJsonListOfRooms()
         json_object *players = json_object_new_array();
         for (int j = 0; j < rooms[i].numberOfPlayers; j++)
         {
+            pthread_mutex_lock(&clients_mutex);
             json_object *player = json_object_new_object();
             json_object_object_add(player, "username", json_object_new_string(rooms[i].players[j]->client->username));
             json_object_object_add(player, "avatar", json_object_new_int(rooms[i].players[j]->client->avatar));
+            pthread_mutex_unlock(&clients_mutex);
             json_object_object_add(player, "score", json_object_new_int(rooms[i].players[j]->score));
             json_object_object_add(player, "status", json_object_new_string(getPlayerStatusString(rooms[i].players[j]->status)));
             json_object_array_add(players, player);
