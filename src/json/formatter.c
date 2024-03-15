@@ -186,3 +186,17 @@ Response *parseResponse(const char *string)
     response->data = json_object_object_get(root, "data");
     return response;
 }
+
+const char *createJsonNotification(const char *whatHappened, const char *username)
+{
+    json_object *json = json_object_new_object();
+    json_object_object_add(json, "type", json_object_new_string("SERVER_NOTIFICATION"));
+    json_object *data = json_object_new_object();
+    json_object_object_add(data, "whatHappened", json_object_new_string(whatHappened));
+    json_object *player = json_object_new_object();
+    json_object_object_add(player, "username", json_object_new_string(username));
+    json_object_object_add(data, "player", player);
+    json_object_object_add(json, "data", data);
+    const char *jsonString = json_object_to_json_string(json);
+    return jsonString;
+}

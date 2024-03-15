@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <multicast.h>
-#include <stdio.h>
 
 #include "handle_room.h"
 #include "data/response.h"
@@ -33,7 +32,8 @@ void finish_game(const char *username)
 
                 if (strcmp(room->players[i]->client->username, username) == 0)
                 {
-                    room->players[i]->score += max(0,15 - strlen(room->word));
+                    if(15 - strlen(room->word)>0)
+                        room->players[i]->score += 15 - strlen(room->word);
                     room->players[i]->status = GUESSER;
                     fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
                 }
@@ -137,6 +137,7 @@ void start_game()
     struct mcsender *sc = mc_sender_init(NULL, room->address, SERVER_PORT);
     mc_sender_send(sc, json, strlen(json) + 1);
     mc_sender_uinit(sc);
+    alarm(30);
 }
 
 void cb(struct mcpacket *packet)
@@ -185,6 +186,11 @@ void cb(struct mcpacket *packet)
         if (strcmp(whatHappened, "LEFT") == 0)
         {
             const char *username = json_object_get_string(json_object_object_get(root, "username"));
+            if(strcmp(username,room->chooser)== 0){
+                if(room->inGame == 0)
+                    start_game();
+            }
+
             for (int i = 0; i < room->numberOfPlayers; i++)
             {
                 if (strcmp(room->players[i]->client->username, username) == 0)
@@ -223,6 +229,7 @@ void cb(struct mcpacket *packet)
 
     if (strcmp(response->type, "WORD_CHOSEN") == 0)
     {
+        alarm(0);
         fprintf(stderr, "Received server message: %s\n", json_object_get_string(response->data));
         json_object *root = response->data;
         const char *word = json_object_get_string(json_object_object_get(root, "word"));
@@ -245,10 +252,15 @@ void *handle_room(void *arg)
 
     fprintf(stderr, "Ho creato il Thread per la stanza %s\n", room->name);
     struct mcreceiver *rc = mc_receiver_init(NULL, room->address, SERVER_PORT, &cb);
+    signal(SIGALRM, alarm_handler);
     while (running)
     {
         sleep(1);
     }
     mc_receiver_uinit(rc);
     return 0;
+}
+
+void alarm_handler(int signum) {
+    start_game();
 }

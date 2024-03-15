@@ -29,6 +29,21 @@ void *handle_client(void *arg)
             {
                 if (clients[i].socket == client_socket)
                 {
+                    pthread_mutex_lock(&rooms_mutex);
+                    for(int j = 0; j < num_rooms; j++) {
+                        for(int k = 0; k < rooms[j].numberOfPlayers; k++) {
+                            if(rooms[j].players[k]->client->socket == client_socket) {
+
+                                const char *json = createJsonNotification("LEFT", rooms[j].players[k]->client->username);
+                                struct mcsender *sc = mc_sender_init(NULL, rooms[j].address, SERVER_PORT);
+                                mc_sender_send(sc, json, strlen(json) + 1);
+                                mc_sender_uinit(sc);
+                                rooms[j].numberOfPlayers--;
+                                memmove(&rooms[j].players[k], &rooms[j].players[k + 1], (rooms[j].numberOfPlayers - k - 1) * sizeof(Player));
+                            }
+                        }
+                    }
+                    pthread_mutex_unlock(&rooms_mutex);
                     printf("Client disconnected: %s:%d\n", inet_ntoa(clients[i].address.sin_addr),
                            ntohs(clients[i].address.sin_port));
                     memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(Client));

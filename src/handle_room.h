@@ -12,5 +12,6 @@ void *reveal_letters(void *arg);
 void finish_game(const char *username);
 void start_game();
 void cb(struct mcpacket *packet);
+void alarm_handler(int signum);
 
 #endif // HANDLE_ROOM_H

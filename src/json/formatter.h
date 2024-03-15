@@ -1,7 +1,7 @@
 #ifndef FORMATTER_H
 #define FORMATTER_H
 
-#include <ctype.h> 
+#include <ctype.h>
 #include "../data/user.h"
 #include "../data/room.h"
 #include "../data/player.h"
@@ -29,5 +29,7 @@ const char *createJsonListOfRooms();
 Request *parseRequest(const char *string);
 
 Response *parseResponse(const char *string);
+
+const char *createJsonNotification(const char *whatHappened, const char *username);
 
 #endif
