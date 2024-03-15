@@ -190,7 +190,7 @@ Response *parseResponse(const char *string)
 const char *createJsonNotification(const char *whatHappened, const char *username)
 {
     json_object *json = json_object_new_object();
-    json_object_object_add(json, "type", json_object_new_string("SERVER_NOTIFICATION"));
+    json_object_object_add(json, "responseType", json_object_new_string("SERVER_NOTIFICATION"));
     json_object *data = json_object_new_object();
     json_object_object_add(data, "whatHappened", json_object_new_string(whatHappened));
     json_object *player = json_object_new_object();

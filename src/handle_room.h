@@ -13,5 +13,6 @@ void finish_game(const char *username);
 void start_game();
 void cb(struct mcpacket *packet);
 void alarm_handler(int signum);
+void close_room();
 
 #endif // HANDLE_ROOM_H

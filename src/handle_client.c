@@ -24,32 +24,51 @@ void *handle_client(void *arg)
         }
         else if (n == 0)
         {
-            pthread_mutex_lock(&clients_mutex);
             for (int i = 0; i < num_clients; i++)
             {
                 if (clients[i].socket == client_socket)
                 {
                     pthread_mutex_lock(&rooms_mutex);
-                    for(int j = 0; j < num_rooms; j++) {
-                        for(int k = 0; k < rooms[j].numberOfPlayers; k++) {
-                            if(rooms[j].players[k]->client->socket == client_socket) {
-
+                    for (int j = 0; j < num_rooms; j++)
+                    {
+                        for (int k = 0; k < rooms[j].numberOfPlayers; k++)
+                        {
+                            if (strcmp(rooms[j].players[k]->client->username,clients[i].username)== 0)
+                            {
                                 const char *json = createJsonNotification("LEFT", rooms[j].players[k]->client->username);
                                 struct mcsender *sc = mc_sender_init(NULL, rooms[j].address, SERVER_PORT);
                                 mc_sender_send(sc, json, strlen(json) + 1);
                                 mc_sender_uinit(sc);
+
+                                fprintf(stderr, "Client %s left room %s\n", rooms[j].players[k]->client->username, rooms[j].name);
+                             
+                                rooms[j].players[k]->client = NULL;
+                                for (int y = k; y < rooms[j].numberOfPlayers - 1; y++)
+                                {
+                                    rooms[j].players[y] = rooms[j].players[y + 1];
+                                }
                                 rooms[j].numberOfPlayers--;
-                                memmove(&rooms[j].players[k], &rooms[j].players[k + 1], (rooms[j].numberOfPlayers - k - 1) * sizeof(Player));
+
+                                break;
                             }
                         }
                     }
                     pthread_mutex_unlock(&rooms_mutex);
+
+
                     printf("Client disconnected: %s:%d\n", inet_ntoa(clients[i].address.sin_addr),
                            ntohs(clients[i].address.sin_port));
-                    memmove(&clients[i], &clients[i + 1], (num_clients - i - 1) * sizeof(Client));
+                    
+                    pthread_mutex_lock(&clients_mutex);
+                    for (int j = i; j < num_clients - 1; j++)
+                    {
+                        clients[j] = clients[j + 1];
+                    }
+                    pthread_mutex_unlock(&clients_mutex);
                     break;
                 }
             }
+            pthread_mutex_lock(&clients_mutex);
             num_clients--;
             fprintf(stderr, "Total clients: %d\n", num_clients);
             pthread_mutex_unlock(&clients_mutex);
@@ -216,14 +235,15 @@ void *handle_client(void *arg)
             const char *address = json_object_get_string(json_object_object_get(request->data, "address"));
             // Find the room with the port
             Room *room = NULL;
-            for(int i = 0; i < num_rooms; i++) {
+            for (int i = 0; i < num_rooms; i++)
+            {
                 if (strcmp(rooms[i].address, address) == 0)
                 {
                     room = &rooms[i];
                     break;
                 }
             }
-            
+
             // Send error message if room not found
             if (room == NULL)
             {
@@ -277,7 +297,7 @@ void *handle_client(void *arg)
             player->client = client;
             player->score = 0;
             player->status = GUESSER;
-            rooms->players[room->numberOfPlayers] = player;
+            rooms->players[0] = player;
             rooms->numberOfPlayers++;
             // create thread for the room
             pthread_t tid;
@@ -292,7 +312,9 @@ void *handle_client(void *arg)
             }
             else
             {
+                pthread_mutex_lock(&rooms_mutex);
                 num_rooms++;
+                pthread_mutex_unlock(&rooms_mutex);
                 const char *successMessage = createJsonSuccessMessage(address);
                 send(client_socket, successMessage, strlen(successMessage), 0);
             }

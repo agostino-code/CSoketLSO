@@ -16,49 +16,65 @@ bool running = true;
 
 void finish_game(const char *username)
 {
-    if (room->inGame == 1)
+    if (room->inGame == true)
     {
-        room->inGame = 0;
-        if (strcmp(room->chooser, username) == 0)
+
+        fprintf(stderr, "The game is finished\n");
+        room->inGame = false;
+        bool player_ingame = false;
+
+        for (int i = 0; i < room->numberOfPlayers; i++)
         {
-            fprintf(stderr, "Time is up!\n");
-
-            for (int i = 0; i < room->numberOfPlayers; i++)
+            if (strcmp(room->players[i]->client->username, username) == 0)
             {
-                if (room->players[i]->status == SPECTATOR)
-                {
-                    room->players[i]->status = GUESSER;
-                }
+                player_ingame = true;
+            }
+        }
 
-                if (strcmp(room->players[i]->client->username, username) == 0)
+        if(player_ingame == true){
+            if (strcmp(room->chooser, username) == 0)
+            {
+                fprintf(stderr, "Time is up!\n");
+
+                for (int i = 0; i < room->numberOfPlayers; i++)
                 {
-                    if(15 - strlen(room->word)>0)
-                        room->players[i]->score += 15 - strlen(room->word);
-                    room->players[i]->status = GUESSER;
-                    fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
+                    if (room->players[i]->status == SPECTATOR)
+                    {
+                        room->players[i]->status = GUESSER;
+                    }
+
+                    if (strcmp(room->players[i]->client->username, username) == 0)
+                    {
+                        if (15 - strlen(room->word) > 0)
+                            room->players[i]->score += 15 - strlen(room->word);
+                        room->players[i]->status = GUESSER;
+                        fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < room->numberOfPlayers; i++)
+                {
+                    if (room->players[i]->status == SPECTATOR)
+                    {
+                        room->players[i]->status = GUESSER;
+                    }
+
+                    if (strcmp(room->players[i]->client->username, username) == 0)
+                    {
+                        room->players[i]->score += strlen(room->word);
+                        fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
+                    }
                 }
             }
         }
-        else
-        {
-            for (int i = 0; i < room->numberOfPlayers; i++)
-            {
-                if (room->players[i]->status == SPECTATOR)
-                {
-                    room->players[i]->status = GUESSER;
-                }
-
-                if (strcmp(room->players[i]->client->username, username) == 0)
-                {
-                    room->players[i]->score += strlen(room->word);
-                    fprintf(stderr, "The score of %s is now %d\n", username, room->players[i]->score);
-                }
-            }
-        }
+        room->chooser = NULL;
         room->word = NULL;
         room->mixedletters = NULL;
         room->revealedletters = NULL;
-        start_game();
+        if (room->numberOfPlayers > 1)
+            start_game();
     }
 }
 
@@ -74,9 +90,8 @@ void *reveal_letters(void *arg)
     while (1)
     {
         sleep(15);
-
         // Check if the game is still in progress
-        if (!room->inGame)
+        if (!room->inGame == true)
         {
             free(mixedletters);
             break;
@@ -91,11 +106,15 @@ void *reveal_letters(void *arg)
             {
                 mixedletters[i] = mixedletters[i + 1];
             }
+            fprintf(stderr, "Revealed letters: %s\n", room->revealedletters);
         }
-        else
+
+        if (strlen(mixedletters) == 0)
         {
-            room->inGame = 0;
+            free(mixedletters);
+            fprintf(stderr, "No more letters to reveal\n");
             finish_game(username);
+            break;
         }
     }
 
@@ -109,7 +128,6 @@ void close_room()
     {
         if (&rooms[i] == room)
         {
-            free(room);
             for (int j = i; j < num_rooms - 1; j++)
             {
                 rooms[j] = rooms[j + 1];
@@ -123,27 +141,41 @@ void close_room()
 
 void start_game()
 {
-    fprintf(stderr, "New game\n");
-    sleep(5);
-    json_object *root = json_object_new_object();
-    json_object_object_add(root, "responseType", json_object_new_string("NEW_CHOOSER"));
-    int chooserIndex = rand() % room->numberOfPlayers;
-    room->chooser = room->players[chooserIndex]->client->username;
-    json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client->username));
-    room->players[chooserIndex]->status = CHOOSER;
+    if (room->numberOfPlayers > 1)
+    {
+        fprintf(stderr, "New game\n");
+        sleep(5);
+        if(room->numberOfPlayers > 1){
+            json_object *root = json_object_new_object();
+            json_object_object_add(root, "responseType", json_object_new_string("NEW_CHOOSER"));
+            int chooserIndex = rand() % room->numberOfPlayers;
+            room->chooser = room->players[chooserIndex]->client->username;
+            json_object_object_add(root, "data", json_object_new_string(room->players[chooserIndex]->client->username));
+            room->players[chooserIndex]->status = CHOOSER;
 
-    const char *json = json_object_to_json_string(root);
-    fprintf(stderr, "Sending to multicast: %s\n", json);
-    struct mcsender *sc = mc_sender_init(NULL, room->address, SERVER_PORT);
-    mc_sender_send(sc, json, strlen(json) + 1);
-    mc_sender_uinit(sc);
-    alarm(30);
+            const char *json = json_object_to_json_string(root);
+            fprintf(stderr, "Sending to multicast: %s\n", json);
+            struct mcsender *sc = mc_sender_init(NULL, room->address, SERVER_PORT);
+            mc_sender_send(sc, json, strlen(json) + 1);
+            mc_sender_uinit(sc);
+            alarm(35);
+        }
+    }
 }
 
 void cb(struct mcpacket *packet)
 {
-    // printf("[%s]-[Len:%d]-[From:%s]\n", packet->data, packet->len, packet->src_addr);ù
+    // printf("[%s]-[Len:%d]-[From:%s]\n", packet->data, packet->len, packet->src_addr);
+    if (packet->len == 0)
+        return;
+
     Response *response = parseResponse(packet->data);
+
+    if (response == NULL)
+        return;
+
+    if (response->type == NULL)
+        return;
 
     if (strcmp(response->type, "SERVER_NOTIFICATION") == 0)
     {
@@ -167,7 +199,9 @@ void cb(struct mcpacket *packet)
             }
             room->players[room->numberOfPlayers]->client = client;
             room->players[room->numberOfPlayers]->score = 0;
+            pthread_mutex_lock(&rooms_mutex);
             room->numberOfPlayers++;
+            pthread_mutex_unlock(&rooms_mutex);
             if (room->inGame == true)
             {
                 room->players[room->numberOfPlayers - 1]->status = SPECTATOR;
@@ -177,7 +211,6 @@ void cb(struct mcpacket *packet)
                 room->players[room->numberOfPlayers - 1]->status = GUESSER;
                 if (room->numberOfPlayers > 1)
                 {
-                    room->inGame = 1;
                     start_game();
                 }
             }
@@ -185,10 +218,16 @@ void cb(struct mcpacket *packet)
 
         if (strcmp(whatHappened, "LEFT") == 0)
         {
-            const char *username = json_object_get_string(json_object_object_get(root, "username"));
-            if(strcmp(username,room->chooser)== 0){
-                if(room->inGame == 0)
-                    start_game();
+            json_object *player = json_object_object_get(root, "player");
+            const char *username = json_object_get_string(json_object_object_get(player, "username"));
+            if (room->chooser != NULL)
+            {
+                if (strcmp(username, room->chooser) == 0)
+                {
+                    if (room->inGame == 0)
+                        if (room->numberOfPlayers > 0)
+                            start_game();
+                }
             }
 
             for (int i = 0; i < room->numberOfPlayers; i++)
@@ -200,7 +239,9 @@ void cb(struct mcpacket *packet)
                     {
                         room->players[j] = room->players[j + 1];
                     }
+                    pthread_mutex_lock(&rooms_mutex);
                     room->numberOfPlayers--;
+                    pthread_mutex_unlock(&rooms_mutex);
                 }
             }
             if (room->numberOfPlayers == 0)
@@ -250,17 +291,27 @@ void *handle_room(void *arg)
 {
     room = (Room *)arg;
 
+    room->chooser = NULL;
+    room->word = NULL;
+    room->mixedletters = NULL;
+    room->revealedletters = NULL;
+
     fprintf(stderr, "Ho creato il Thread per la stanza %s\n", room->name);
     struct mcreceiver *rc = mc_receiver_init(NULL, room->address, SERVER_PORT, &cb);
     signal(SIGALRM, alarm_handler);
-    while (running)
+    while (room->numberOfPlayers > 0)
     {
         sleep(1);
     }
+    close_room();
     mc_receiver_uinit(rc);
     return 0;
 }
 
-void alarm_handler(int signum) {
-    start_game();
+void alarm_handler(int signum)
+{
+    if (room->inGame == 1)
+        finish_game(room->chooser);
+    else if (room->inGame == 0)
+        start_game();
 }
