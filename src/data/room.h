@@ -31,6 +31,7 @@ typedef struct {
     const char* mixedletters;
     char* revealedletters;
     const char* chooser;
+    pthread_mutex_t mutex;
 } Room;
 
 #endif // ROOM_H

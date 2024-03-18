@@ -28,37 +28,40 @@ void *handle_client(void *arg)
             {
                 if (clients[i].socket == client_socket)
                 {
-                    pthread_mutex_lock(&rooms_mutex);
-                    for (int j = 0; j < num_rooms; j++)
+                    if (strcmp(clients[i].username, "Anonymous") != 0)
                     {
-                        for (int k = 0; k < rooms[j].numberOfPlayers; k++)
+                        pthread_mutex_lock(&rooms_mutex);
+                        for (int j = 0; j < num_rooms; j++)
                         {
-                            if (strcmp(rooms[j].players[k]->client->username,clients[i].username)== 0)
+                            for (int k = 0; k < rooms[j].numberOfPlayers; k++)
                             {
-                                const char *json = createJsonNotification("LEFT", rooms[j].players[k]->client->username);
-                                struct mcsender *sc = mc_sender_init(NULL, rooms[j].address, SERVER_PORT);
-                                mc_sender_send(sc, json, strlen(json) + 1);
-                                mc_sender_uinit(sc);
-
-                                fprintf(stderr, "Client %s left room %s\n", rooms[j].players[k]->client->username, rooms[j].name);
-                             
-                                rooms[j].players[k]->client = NULL;
-                                for (int y = k; y < rooms[j].numberOfPlayers - 1; y++)
+                                if (strcmp(rooms[j].players[k]->client->username, clients[i].username) == 0)
                                 {
-                                    rooms[j].players[y] = rooms[j].players[y + 1];
-                                }
-                                rooms[j].numberOfPlayers--;
+                                    const char *json = createJsonNotification("LEFT", rooms[j].players[k]->client->username);
+                                    struct mcsender *sc = mc_sender_init(NULL, rooms[j].address, SERVER_PORT);
+                                    mc_sender_send(sc, json, strlen(json) + 1);
+                                    mc_sender_uinit(sc);
 
-                                break;
+                                    fprintf(stderr, "Client %s left room %s\n", rooms[j].players[k]->client->username, rooms[j].name);
+
+                                    pthread_mutex_lock(&rooms[j].mutex);
+                                    rooms[j].players[k]->client = NULL;
+                                    for (int y = k; y < rooms[j].numberOfPlayers - 1; y++)
+                                    {
+                                        rooms[j].players[y] = rooms[j].players[y + 1];
+                                    }
+                                    rooms[j].numberOfPlayers--;
+                                    pthread_mutex_unlock(&rooms[j].mutex);
+                                    break;
+                                }
                             }
                         }
+                        pthread_mutex_unlock(&rooms_mutex);
                     }
-                    pthread_mutex_unlock(&rooms_mutex);
-
 
                     printf("Client disconnected: %s:%d\n", inet_ntoa(clients[i].address.sin_addr),
                            ntohs(clients[i].address.sin_port));
-                    
+
                     pthread_mutex_lock(&clients_mutex);
                     for (int j = i; j < num_clients - 1; j++)
                     {
@@ -140,6 +143,18 @@ void *handle_client(void *arg)
             user->username = strdup(PQgetvalue(result, 0, 1));
             user->avatar = strtoul(PQgetvalue(result, 0, 3), NULL, 10);
 
+            for (int j = 0; j < num_clients; j++)
+            {
+                if (strcmp(clients[j].username, user->username) == 0)
+                {
+                    const char *errorMessage = createJsonErrorMessage("Already logged in");
+                    send(client_socket, errorMessage, strlen(errorMessage), 0);
+                    free(user);
+                    free(request);
+                    goto continua;
+                }
+            }
+
             PQclear(result);
 
             Client *client = find_client_by_socket(client_socket);
@@ -152,6 +167,7 @@ void *handle_client(void *arg)
             free(user);
             free(request);
 
+            continua:
             continue;
         }
 
@@ -297,8 +313,8 @@ void *handle_client(void *arg)
             player->client = client;
             player->score = 0;
             player->status = GUESSER;
-            rooms->players[0] = player;
-            rooms->numberOfPlayers++;
+            rooms[num_rooms].players[0] = player;
+            rooms[num_rooms].numberOfPlayers++;
             // create thread for the room
             pthread_t tid;
             rooms[num_rooms].thread = tid;
