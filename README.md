@@ -111,7 +111,11 @@ Before using CMake, ensure you have the following prerequisites:
 
 Once you have the prerequisites, follow these steps to build your C project using CMake:
 
-1. **Run CMake:** 
+1. **Run CMake:**
+
+   ```bash
+   cmake .
+   ```
 
    ```bash
    cmake --build .
