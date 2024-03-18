@@ -2,6 +2,7 @@
 #include "../globals.h"
 #include <ctype.h> 
 
+// Function for creating a JSON user object
 const char *userToJson(const User *userObj)
 {
     //{"responseType":"SUCCESS","data":{"email":"agostino.cesarano@gmail.com","password":"aaaaaa","username":null,"avatar":null}}
@@ -20,7 +21,7 @@ const char *userToJson(const User *userObj)
     return json;
 }
 
-// userParse
+// Function for get the User object from JSON
 User *userParse(json_object *root)
 {
     User *user = (User *)malloc(sizeof(User));
@@ -89,7 +90,7 @@ const char* roomToJson(Room* room)
     return json;
 }
 
-// roomParse
+// Function for get the Room object from JSON
 Room *roomParse(json_object *root)
 {
     Room *room = (Room *)malloc(sizeof(Room));
@@ -121,6 +122,7 @@ const char *createJsonSuccessMessage(const char *successMessage)
     return json;
 }
 
+// Function for creating a JSON list of rooms
 const char *createJsonListOfRooms()
 {
     json_object *root = json_object_new_object();
@@ -133,7 +135,6 @@ const char *createJsonListOfRooms()
         json_object_object_add(room, "name", json_object_new_string(rooms[i].name));
         json_object_object_add(room, "numberOfPlayers", json_object_new_int(rooms[i].numberOfPlayers));
         json_object_object_add(room, "maxNumberOfPlayers", json_object_new_int(rooms[i].maxPlayers));
-        //Players
         json_object *players = json_object_new_array();
         for (int j = 0; j < rooms[i].numberOfPlayers; j++)
         {
@@ -148,7 +149,6 @@ const char *createJsonListOfRooms()
         }
         json_object_object_add(room, "address", json_object_new_string(rooms[i].address));
         json_object_object_add(room, "inGame", json_object_new_boolean(rooms[i].inGame));
-        //language
         switch (rooms[i].language)
         {
         case ENGLISH:
@@ -170,7 +170,7 @@ const char *createJsonListOfRooms()
     return json;
 }
 
-// string to REQUEST
+// Function for get the Request object from JSON
 Request *parseRequest(const char *string)
 {
     Request *request = (Request *)malloc(sizeof(Request));
@@ -180,6 +180,7 @@ Request *parseRequest(const char *string)
     return request;
 }
 
+// Function for get the Response object from JSON
 Response *parseResponse(const char *string)
 {
     Response *response = (Response *)malloc(sizeof(Response));
@@ -189,6 +190,7 @@ Response *parseResponse(const char *string)
     return response;
 }
 
+// Function for creating a JSON notification
 const char *createJsonNotification(const char *whatHappened, const char *username)
 {
     json_object *json = json_object_new_object();

@@ -14,6 +14,11 @@
 Room *room;
 bool running = true;
 
+/*
+    - If the game is finished, check if the winner is the chooser or a guesser
+    - If the winner is the chooser, the score is 15 - the length of the word
+    - If the winner is a guesser, the score is the length of the word - the length of the revealed letters
+*/
 void finish_game(const char *username)
 {
     if (room->inGame == true)
@@ -110,6 +115,11 @@ void finish_game(const char *username)
     }
 }
 
+/*
+    - The function is called when the game is started
+    - The function reveals a letter every 15 seconds
+*/
+
 void *reveal_letters(void *arg)
 {
     char *username = (char *)arg;
@@ -152,6 +162,11 @@ void *reveal_letters(void *arg)
     return NULL;
 }
 
+/*
+    - The function is called when the game is finished
+    - The function closes the room if there are no players
+*/
+
 void close_room()
 {
     pthread_mutex_lock(&rooms_mutex);
@@ -171,6 +186,12 @@ void close_room()
     pthread_mutex_unlock(&rooms_mutex);
     running = false;
 }
+
+/*
+    - The function is called when the game is started
+    - The function chooses a random player to be the chooser
+    - The function sends a notification to all players
+*/
 
 void start_game()
 {
@@ -213,6 +234,14 @@ void start_game()
             }
         }
 }
+
+/*
+    - The function is called when a packet is received
+    - The function parses the response and checks the type
+    - The function handles the SERVER_NOTIFICATION type
+    - The function handles the SERVER_MESSAGE type
+    - The function handles the WORD_CHOSEN type
+*/
 
 void cb(struct mcpacket *packet)
 {
@@ -371,6 +400,10 @@ void *handle_room(void *arg)
     mc_receiver_uinit(rc);
     return 0;
 }
+
+/*
+    - If the player not chosen a word in 30 seconds, the game chooses another player
+*/
 
 void alarm_handler(int signum)
 {

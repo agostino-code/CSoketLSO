@@ -12,6 +12,12 @@ void *handle_client(void *arg)
     char buffer[1024];
     int n;
 
+    /*
+        The `read` function is called to read data from the client socket.
+        If the return value is less than 0, this means an error occurred while reading from the socket.
+        If the return value is 0, this means the client has disconnected from the server.
+    */
+
     while (1)
     {
         bzero(buffer, 1024);
@@ -24,10 +30,19 @@ void *handle_client(void *arg)
         }
         else if (n == 0)
         {
+
+            /*
+                If the client has disconnected from the server, the server should remove the client from the clients array.
+                Remove any references to the client from any rooms.
+            */
+
             for (int i = 0; i < num_clients; i++)
             {
+                // If the client is found in the clients array
                 if (clients[i].socket == client_socket)
                 {
+
+                    // Remove the client from any rooms
                     if (strcmp(clients[i].username, "Anonymous") != 0)
                     {
                         pthread_mutex_lock(&rooms_mutex);
@@ -37,6 +52,7 @@ void *handle_client(void *arg)
                             {
                                 if (strcmp(rooms[j].players[k]->client->username, clients[i].username) == 0)
                                 {
+                                    // Send notification to the room
                                     const char *json = createJsonNotification("LEFT", rooms[j].players[k]->client->username);
                                     struct mcsender *sc = mc_sender_init(NULL, rooms[j].address, SERVER_PORT);
                                     mc_sender_send(sc, json, strlen(json) + 1);
@@ -62,6 +78,7 @@ void *handle_client(void *arg)
                     printf("Client disconnected: %s:%d\n", inet_ntoa(clients[i].address.sin_addr),
                            ntohs(clients[i].address.sin_port));
 
+                    // Remove the client from the clients array
                     pthread_mutex_lock(&clients_mutex);
                     for (int j = i; j < num_clients - 1; j++)
                     {
@@ -79,15 +96,14 @@ void *handle_client(void *arg)
         }
 
         fprintf(stderr, "Received message: %s\n", buffer);
-        // Il tuo codice per gestire il messaggio...
-        // if PING, send PONG
 
-        // buffer vuoto
+        // If the message is empty, continue to the next iteration
         if (strlen(buffer) == 0)
         {
             continue;
         }
 
+        // If the message is PING, send PONG
         if (strcmp(buffer, "PING") == 0)
         {
             send(client_socket, "PONG", 4, 0);
@@ -95,6 +111,7 @@ void *handle_client(void *arg)
             continue;
         }
 
+        // If the message is not a JSON string, send an error message
         if (buffer[0] != '{' || buffer[strlen(buffer) - 1] != '}')
         {
             const char *errorMessage = createJsonErrorMessage("Invalid JSON");
@@ -103,6 +120,7 @@ void *handle_client(void *arg)
             continue;
         }
 
+        // Parse the JSON string
         Request *request = parseRequest(buffer);
 
         if (request->type == NULL)
@@ -115,10 +133,12 @@ void *handle_client(void *arg)
 
         const char *requestType = request->type;
 
+        // Request type sign in
         if (strcmp(requestType, "SIGN_IN") == 0)
         {
             User *user = userParse(request->data);
 
+            // Check if the user exists
             char query[256];
             sprintf(query, "SELECT * FROM users WHERE email = '%s' AND password = '%s'", user->email, user->password);
             PGresult *result = PQexec(conn, query);
@@ -130,6 +150,7 @@ void *handle_client(void *arg)
                 continue;
             }
 
+            // If the user does not exist, send an error message
             const int rows = PQntuples(result);
             if (rows == 0)
             {
@@ -143,6 +164,7 @@ void *handle_client(void *arg)
             user->username = strdup(PQgetvalue(result, 0, 1));
             user->avatar = strtoul(PQgetvalue(result, 0, 3), NULL, 10);
 
+            // Check if the user is already logged in
             for (int j = 0; j < num_clients; j++)
             {
                 if (strcmp(clients[j].username, user->username) == 0)
@@ -161,16 +183,18 @@ void *handle_client(void *arg)
             client->username = user->username;
             client->avatar = user->avatar;
 
+            // Send the user data to the client
             const char *jsonMessage = userToJson(user);
             send(client_socket, jsonMessage, strlen(jsonMessage), 0);
 
             free(user);
             free(request);
 
-            continua:
+        continua:
             continue;
         }
 
+        // Request type sign up
         if (strcmp(requestType, "SIGN_UP") == 0)
         {
             // Parse the JSON string
@@ -189,6 +213,7 @@ void *handle_client(void *arg)
                 continue;
             }
 
+            // Check if the username exists
             sprintf(query, "SELECT * FROM users WHERE username = '%s'", user->username);
             result = PQexec(conn, query);
             rows = PQntuples(result);
@@ -215,7 +240,8 @@ void *handle_client(void *arg)
             Client *client = find_client_by_socket(client_socket);
             client->username = user->username;
             client->avatar = user->avatar;
-            // success message
+
+            // Send success message
             const char *successMessage = createJsonSuccessMessage("User created successfully");
             send(client_socket, successMessage, strlen(successMessage), 0);
             continue;
@@ -230,6 +256,7 @@ void *handle_client(void *arg)
             continue;
         }
 
+        // Request type join room
         if (strcmp(requestType, "JOIN_ROOM") == 0)
         {
             Client *client = find_client_by_socket(client_socket);
@@ -240,6 +267,7 @@ void *handle_client(void *arg)
                 continue;
             }
 
+            // Check if the user is logged in
             if (strcmp(client->username, "Anonymous") == 0)
             {
                 const char *errorMessage = createJsonErrorMessage("You must be logged in to join a room");
@@ -280,6 +308,7 @@ void *handle_client(void *arg)
             fprintf(stderr, "Room joined: %s\n", successMessage);
         }
 
+        // Request type new room
         if (strcmp(requestType, "NEW_ROOM") == 0)
         {
             const Client *client = find_client_by_socket(client_socket);
