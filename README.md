@@ -116,7 +116,7 @@ Once you have the prerequisites, follow these steps to build your C project usin
    ```bash
    cmake --build .
    ```
-2. ** Run Application:**
+2. **Run Application:**
    ```bash
    ./LSOProject
    ```
