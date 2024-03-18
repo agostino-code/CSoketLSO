@@ -54,9 +54,6 @@ CSocketLSO/
     |   |-- formatter.c
     |   `-- formatter.h
     `-- main.c
-
-
-
 ```
 **Explanation**
 
