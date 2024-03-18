@@ -58,30 +58,6 @@ CSocketLSO/
 
 
 ```
-Sure, here is a project structure where libraries are placed in a `lib` directory and source code in a `src` directory:
-
-**Project Structure**
-
-The following directory structure is a common convention for organizing C projects:
-
-```
-your_project_name/
-├── CMakeLists.txt  # Top-level CMake project file
-├── README.md      # Project documentation
-├── bin            # Compiled executables (optional)
-├── doc            # Project documentation (optional)
-├── include        # Header files for the project
-├── lib            # Third-party libraries
-│   ├── libpq      # PostgreSQL client library
-│   ├── json-c     # JSON manipulation library
-│   └── ...        # Other third-party libraries
-├── src            # Source code for your project
-│   ├── main.c     # Main program file
-│   ├── utils.c     # Utility functions
-│   └── ...        # Other source code files
-└── tests          # Unit tests (optional)
-```
-
 **Explanation**
 
 * `CMakeLists.txt`: The top-level CMake project file that specifies the project's build configuration.
