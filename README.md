@@ -124,3 +124,11 @@ Once you have the prerequisites, follow these steps to build your C project usin
    ```bash
    ./LSOProject
    ```
+## Contributors
+
+- **Jonathan Borrelli**: Contributed to the Android part of the project.
+- **Agostino Cesarano**: Contributed to the server part of the project.
+
+**Related Pepository**
+
+https://github.com/agostino-code/LSOProject/
